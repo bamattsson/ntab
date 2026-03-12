@@ -12,6 +12,8 @@ dependencies = [
     "pandas>=2.0",
     "psycopg2-binary",
     "pyyaml",
+    "rdkit>=2025.09.6",
+    "tqdm>=4.0",
 ]
 
 [project.optional-dependencies]
