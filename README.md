@@ -4,18 +4,22 @@ Code for generating a time-split, novelty-filtered benchmark for protein-ligand 
 
 ## Installation
 
-Requires Python 3.10+ and [uv](https://github.com/astral-sh/uv).
+[uv](https://github.com/astral-sh/uv) is recommended. Requires Python 3.10+.
 
-```bash
-uv pip install -e .
-```
-
-Or into a fresh virtual environment:
+### uv (recommended)
 
 ```bash
 uv venv
 source .venv/bin/activate
 uv pip install -e .
+```
+
+### conda
+
+```bash
+conda create -n timesplit-affinity python=3.10
+conda activate timesplit-affinity
+pip install -e .
 ```
 
 ## Reproducing the data
