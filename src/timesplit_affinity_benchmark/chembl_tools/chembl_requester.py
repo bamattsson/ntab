@@ -35,6 +35,96 @@ class ChEMBLRequester:
         rows = self.cur.fetchall()
         return [{k: v for k, v in zip(col_order, row)} for row in rows]
     
+    def _get_component_classification(self) -> dict[int, tuple[str | None, str | None]]:
+        """Return {component_id: (target_class, target_family)} for all components.
+
+        Walks the protein_classification hierarchy from leaf to root using chained LEFT JOINs
+        (up to 7 levels, matching ChEMBL's hierarchy depth). After reversing the path and
+        removing the root node ('Protein Class'), target_class is the first remaining level
+        and target_family the second. For components with multiple classification paths,
+        the first path returned by the DB is used.
+        """
+        query = """
+        SELECT
+            cc.component_id,
+            pc1.pref_name,
+            pc2.pref_name,
+            pc3.pref_name,
+            pc4.pref_name,
+            pc5.pref_name,
+            pc6.pref_name,
+            pc7.pref_name
+        FROM component_class cc
+        JOIN protein_classification pc1 ON pc1.protein_class_id = cc.protein_class_id
+        LEFT JOIN protein_classification pc2 ON pc2.protein_class_id = pc1.parent_id
+        LEFT JOIN protein_classification pc3 ON pc3.protein_class_id = pc2.parent_id
+        LEFT JOIN protein_classification pc4 ON pc4.protein_class_id = pc3.parent_id
+        LEFT JOIN protein_classification pc5 ON pc5.protein_class_id = pc4.parent_id
+        LEFT JOIN protein_classification pc6 ON pc6.protein_class_id = pc5.parent_id
+        LEFT JOIN protein_classification pc7 ON pc7.protein_class_id = pc6.parent_id
+        """
+        self.cur.execute(query)
+        result: dict[int, tuple[str | None, str | None]] = {}
+        for row in self.cur.fetchall():
+            component_id = row[0]
+            if component_id in result:
+                continue  # keep first classification path per component
+            leaf_to_root = [name for name in row[1:] if name is not None]
+            root_to_leaf = list(reversed(leaf_to_root))[1:]  # drop root "Protein Class"
+            target_class = root_to_leaf[0] if len(root_to_leaf) > 0 else None
+            target_family = root_to_leaf[1] if len(root_to_leaf) > 1 else None
+            result[component_id] = (target_class, target_family)
+        return result
+
+    def get_single_protein_targets(self) -> list[dict[str, str | None]]:
+        """Return all single-protein targets with sequence, gene name, and protein classification.
+
+        target_class and target_family are the two levels just below the root 'Protein Class'
+        node in ChEMBL's protein classification hierarchy.
+
+        Returns:
+            List of dicts with keys: target_chembl_id, target_name, organism, uniprot_id,
+            sequence, gene_name, target_class, target_family.
+        """
+        query = """
+        SELECT
+            td.chembl_id AS target_chembl_id,
+            td.pref_name AS target_name,
+            td.organism,
+            cs.accession AS uniprot_id,
+            cs.component_id,
+            (
+                SELECT csyn.component_synonym
+                FROM component_synonyms csyn
+                WHERE csyn.component_id = cs.component_id AND csyn.syn_type = 'GENE_SYMBOL'
+                LIMIT 1
+            ) AS gene_name,
+            cs.sequence
+        FROM target_dictionary td
+        JOIN target_components tc ON td.tid = tc.tid
+        JOIN component_sequences cs ON tc.component_id = cs.component_id
+        WHERE td.target_type = 'SINGLE PROTEIN'
+            AND cs.component_type = 'PROTEIN'
+        """
+        col_order = ["target_chembl_id", "target_name", "organism", "uniprot_id", "component_id", "gene_name", "sequence"]
+        self.cur.execute(query)
+        rows = self.cur.fetchall()
+
+        final_col_order = [
+            "target_chembl_id", "uniprot_id", "gene_name",
+            "target_class", "target_family", "organism", "target_name", "sequence",
+        ]
+        classification = self._get_component_classification()
+        results = []
+        for row in rows:
+            record = {k: v for k, v in zip(col_order, row)}
+            component_id = record.pop("component_id")
+            target_class, target_family = classification.get(component_id, (None, None))
+            record["target_class"] = target_class
+            record["target_family"] = target_family
+            results.append({k: record[k] for k in final_col_order})
+        return results
+
     def get_all_single_protein_activity_data(
             self,
             target_chembl_ids: Optional[list[str]] = None,
