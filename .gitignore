@@ -11,6 +11,9 @@ build/
 # Pytest
 .pytest_cache/
 
+# Dev scratch
+dev/
+
 # Editor
 .idea/
 .vscode/
