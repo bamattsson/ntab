@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from timesplit_affinity_benchmark.utils.mol_fingerprints import compute_ecfp4_fingerprints
+from timesplit_affinity_benchmark.mol_fingerprints import compute_ecfp4_fingerprints
 
 
 @pytest.fixture

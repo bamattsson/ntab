@@ -698,7 +698,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-mock", marker = "extra == 'dev'" },
     { name = "pyyaml" },
-    { name = "rdkit", specifier = "==2025.9.6" },
+    { name = "rdkit", specifier = ">=2025.9.6" },
     { name = "tqdm", specifier = ">=4.0" },
 ]
 provides-extras = ["dev"]
