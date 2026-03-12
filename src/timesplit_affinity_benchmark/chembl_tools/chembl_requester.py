@@ -16,15 +16,24 @@ class ChEMBLRequester:
         self.cur = self.conn.cursor()
         self.dbname = dbname
 
-    def get_chembl_id_to_smiles(self) -> list[tuple[str, str]]:
-        """Return all (chembl_id, canonical_smiles) pairs from molecule_dictionary."""
+    def get_chembl_id_to_smiles(self) -> list[dict[str, str | int | None]]:
+        """Return all molecules with SMILES and earliest publication year.
+
+        earliest_year is the minimum publication year across all compound records associated
+        with the molecule, or None if no year is available.
+        """
         query = """
-        SELECT md.chembl_id, cs.canonical_smiles
+        SELECT md.chembl_id, cs.canonical_smiles, MIN(d.year) AS earliest_year
         FROM molecule_dictionary md
         JOIN compound_structures cs ON md.molregno = cs.molregno
+        LEFT JOIN compound_records cr ON cr.molregno = md.molregno
+        LEFT JOIN docs d ON d.doc_id = cr.doc_id
+        GROUP BY md.chembl_id, cs.canonical_smiles
         """
+        col_order = ["chembl_id", "canonical_smiles", "earliest_year"]
         self.cur.execute(query)
-        return self.cur.fetchall()
+        rows = self.cur.fetchall()
+        return [{k: v for k, v in zip(col_order, row)} for row in rows]
     
     def get_all_single_protein_activity_data(
             self,
