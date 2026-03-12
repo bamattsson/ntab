@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "timesplit-affinity-benchmark"
+version = "0.1.0"
+description = "Time-split, novelty-filtered benchmark for protein-ligand binding affinity prediction"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/timesplit_affinity_benchmark"]
