@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from timesplit_affinity_benchmark.affinity_utils import add_pchembl_columns
 from timesplit_affinity_benchmark.chembl_requester import ChEMBLRequester
 from timesplit_affinity_benchmark.config import load_config
 from timesplit_affinity_benchmark.mol_fingerprints import compute_ecfp4_fingerprints
@@ -110,9 +111,18 @@ def main() -> None:
     print("  Saved compounds_with_novelty.parquet.")
 
     # ------------------------------------------------------------------
-    # STEP 4: Assign splits
+    # STEP 4: Add pChEMBL columns
     # ------------------------------------------------------------------
-    print("Step 4: Assigning splits...")
+    print("Step 4: Adding pChEMBL columns...")
+    n_original = activities_df["pchembl_value"].notna().sum()
+    activities_df = add_pchembl_columns(activities_df)
+    n_filled = activities_df["pchembl_value_filled"].notna().sum()
+    print(f"  pchembl_value_filled: {n_filled} non-null (vs {n_original} in original pchembl_value)")
+
+    # ------------------------------------------------------------------
+    # STEP 5: Assign splits
+    # ------------------------------------------------------------------
+    print("Step 5: Assigning splits...")
     activities_df = assign_splits(activities_df, compounds_df)
     print("  Split value counts (including NaN):")
     print(activities_df["split"].value_counts(dropna=False).to_string())
@@ -121,11 +131,11 @@ def main() -> None:
     print("  Saved split_assignments.parquet.")
 
     # ------------------------------------------------------------------
-    # STEP 5: Build final activity file
+    # STEP 6: Build final activity file
     # ------------------------------------------------------------------
-    print("Step 5: Building final activity file...")
+    print("Step 6: Building final activity file...")
 
-    sim_cols = compounds_df[["cpd_earliest_year", "canonical_smiles",
+    sim_cols = compounds_df[["cpd_earliest_year", "canonical_smiles", "mw_freebase", "molecule_type",
                               "max_sim_pre_2024", "most_sim_cpd_pre_2024",
                               "max_sim_pre_2023", "most_sim_cpd_pre_2023"]]
     activities_df = activities_df.merge(
@@ -143,9 +153,9 @@ def main() -> None:
     print(f"  Saved activities.parquet: {activities_df.shape}")
 
     # ------------------------------------------------------------------
-    # STEP 6: Save target file
+    # STEP 7: Save target file
     # ------------------------------------------------------------------
-    print("Step 6: Saving target file...")
+    print("Step 7: Saving target file...")
     targets_df.to_parquet(OUT_DIR / "targets.parquet", index=False)
     print(f"  Saved targets.parquet: {targets_df.shape}")
 
