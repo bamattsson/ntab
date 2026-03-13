@@ -14,8 +14,8 @@ import pandas as pd
 from timesplit_affinity_benchmark.chembl_requester import ChEMBLRequester
 from timesplit_affinity_benchmark.config import load_config
 from timesplit_affinity_benchmark.mol_fingerprints import compute_ecfp4_fingerprints
+from timesplit_affinity_benchmark.novelty import compute_novelty_for_cutoff
 from timesplit_affinity_benchmark.split_assigner import assign_splits
-from timesplit_affinity_benchmark.tanimoto_filter import filter_by_tanimoto
 
 INTERMEDIATE_DIR = Path("intermediate_out")
 OUT_DIR = Path("out")
@@ -41,16 +41,18 @@ def main() -> None:
     print(f"  Activities raw: {activities_df.shape}")
 
     if config.pipeline.activity_limit is not None:
-        activities_df = activities_df.head(config.pipeline.activity_limit)
+        n = min(config.pipeline.activity_limit, len(activities_df))
+        activities_df = activities_df.sample(n=n, random_state=42).reset_index(drop=True)
         print(f"  Activities after limit: {activities_df.shape}")
 
     compounds_df = pd.DataFrame(requester.get_chembl_id_to_smiles())
-    if config.pipeline.activity_limit is not None:
-        relevant_ids = set(activities_df["ligand_chembl_id"])
-        compounds_df = compounds_df[compounds_df["chembl_id"].isin(relevant_ids)]
-    print(f"  Compounds: {compounds_df.shape}")
-
     targets_df = pd.DataFrame(requester.get_single_protein_targets())
+
+    # Filter compounds to only those referenced by the (possibly limited) activities
+    relevant_ids = set(activities_df["ligand_chembl_id"].dropna())
+    compounds_df = compounds_df[compounds_df["chembl_id"].isin(relevant_ids)].reset_index(drop=True)
+
+    print(f"  Compounds (filtered to activities): {compounds_df.shape}")
     print(f"  Targets: {targets_df.shape}")
 
     activities_df.to_parquet(INTERMEDIATE_DIR / "activities_raw.parquet", index=False)
@@ -72,50 +74,46 @@ def main() -> None:
     np.savez_compressed(INTERMEDIATE_DIR / "fingerprints.npz", names=fp_names, fps=fp_matrix)
     print("  Saved fingerprints.npz.")
 
-    # ------------------------------------------------------------------
-    # STEP 3: Assign splits
-    # ------------------------------------------------------------------
-    print("Step 3: Assigning splits...")
     fp_index = {name: i for i, name in enumerate(fp_names)}
 
-    # Reference set: unique train+val compounds (doc_year < 2024)
-    trainval_ids = (
-        activities_df[activities_df["doc_year"] < 2024]["ligand_chembl_id"]
-        .dropna().unique()
-    )
-    ref_ids = np.array([cid for cid in trainval_ids if cid in fp_index])
-    ref_fps = fp_matrix[[fp_index[cid] for cid in ref_ids]]
-    print(f"  Reference compounds (train+val, deduplicated): {len(ref_ids)}")
+    # ------------------------------------------------------------------
+    # STEP 3: Compute novelty
+    # ------------------------------------------------------------------
+    print("Step 3: Computing novelty...")
 
-    # Candidate set: unique 2024+ compounds
-    candidate_ids_all = (
-        activities_df[activities_df["doc_year"] >= 2024]["ligand_chembl_id"]
-        .dropna().unique()
-    )
-    cand_ids = np.array([cid for cid in candidate_ids_all if cid in fp_index])
-    cand_fps = fp_matrix[[fp_index[cid] for cid in cand_ids]]
-    print(f"  Candidate compounds (2024+, deduplicated): {len(cand_ids)}")
-
-    is_novel, max_sims, most_similar_ids = filter_by_tanimoto(
-        candidate_fps=cand_fps,
-        reference_fps=ref_fps,
-        reference_ids=ref_ids,
+    novelty_2024 = compute_novelty_for_cutoff(
+        compounds_df=compounds_df,
+        cutoff_year=2024,
+        fp_index=fp_index,
+        fp_matrix=fp_matrix,
         threshold=config.pipeline.tanimoto_threshold,
         n_jobs=config.pipeline.n_jobs,
     )
+    novel_2024 = novelty_2024["is_novel_2024"]
+    print(f"  2024 cutoff — novel: {(novel_2024 == True).sum()}, not novel: {(novel_2024 == False).sum()}, reference: {novel_2024.isna().sum()}")
 
-    is_novel_df = pd.DataFrame(
-        {
-            "is_novel": is_novel,
-            "max_similarity": max_sims,
-            "most_similar_id": most_similar_ids,
-        },
-        index=pd.Index(cand_ids, name="chembl_id"),
+    novelty_2023 = compute_novelty_for_cutoff(
+        compounds_df=compounds_df,
+        cutoff_year=2023,
+        fp_index=fp_index,
+        fp_matrix=fp_matrix,
+        threshold=config.pipeline.tanimoto_threshold,
+        n_jobs=config.pipeline.n_jobs,
     )
-    is_novel_df.to_parquet(INTERMEDIATE_DIR / "is_novel.parquet")
-    print(f"  Saved is_novel.parquet. Novel: {is_novel.sum()} / {len(is_novel)}")
+    novel_2023 = novelty_2023["is_novel_2023"]
+    print(f"  2023 cutoff — novel: {(novel_2023 == True).sum()}, not novel: {(novel_2023 == False).sum()}, reference: {novel_2023.isna().sum()}")
 
-    activities_df = assign_splits(activities_df, is_novel_df)
+    # Enrich compounds_df with all 6 novelty columns and save as intermediate
+    compounds_df = compounds_df.set_index("chembl_id")
+    compounds_df = compounds_df.join(novelty_2024).join(novelty_2023)
+    compounds_df.to_parquet(INTERMEDIATE_DIR / "compounds_with_novelty.parquet")
+    print("  Saved compounds_with_novelty.parquet.")
+
+    # ------------------------------------------------------------------
+    # STEP 4: Assign splits
+    # ------------------------------------------------------------------
+    print("Step 4: Assigning splits...")
+    activities_df = assign_splits(activities_df, compounds_df)
     print("  Split value counts (including NaN):")
     print(activities_df["split"].value_counts(dropna=False).to_string())
 
@@ -123,29 +121,31 @@ def main() -> None:
     print("  Saved split_assignments.parquet.")
 
     # ------------------------------------------------------------------
-    # STEP 4: Build final activity file
+    # STEP 5: Build final activity file
     # ------------------------------------------------------------------
-    print("Step 4: Building final activity file...")
-    compounds_lookup = compounds_df.set_index("chembl_id")[["canonical_smiles", "earliest_year"]]
+    print("Step 5: Building final activity file...")
+
+    sim_cols = compounds_df[["cpd_earliest_year", "canonical_smiles",
+                              "max_sim_pre_2024", "most_sim_cpd_pre_2024",
+                              "max_sim_pre_2023", "most_sim_cpd_pre_2023"]]
     activities_df = activities_df.merge(
-        compounds_lookup, left_on="ligand_chembl_id", right_index=True, how="left"
-    )
-    activities_df = activities_df.merge(
-        is_novel_df[["most_similar_id", "max_similarity"]],
-        left_on="ligand_chembl_id", right_index=True, how="left",
+        sim_cols,
+        left_on="ligand_chembl_id",
+        right_index=True,
+        how="left",
     )
 
     activities_df = activities_df[activities_df["split"].notna()]
-    if not config.pipeline.keep_not_novel:
+    if not config.pipeline.keep_not_novel_in_test:
         activities_df = activities_df[activities_df["split"] != "2024_not_novel"]
 
     activities_df.to_parquet(OUT_DIR / "activities.parquet", index=False)
     print(f"  Saved activities.parquet: {activities_df.shape}")
 
     # ------------------------------------------------------------------
-    # STEP 5: Save target file
+    # STEP 6: Save target file
     # ------------------------------------------------------------------
-    print("Step 5: Saving target file...")
+    print("Step 6: Saving target file...")
     targets_df.to_parquet(OUT_DIR / "targets.parquet", index=False)
     print(f"  Saved targets.parquet: {targets_df.shape}")
 

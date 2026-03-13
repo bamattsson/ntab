@@ -15,7 +15,7 @@ class ChEMBLConfig:
 @dataclass
 class PipelineConfig:
     tanimoto_threshold: float
-    keep_not_novel: bool
+    keep_not_novel_in_test: bool
     n_jobs: int = 1
     activity_limit: int | None = None
 

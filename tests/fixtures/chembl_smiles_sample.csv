@@ -1,4 +1,4 @@
-chembl_id,canonical_smiles,earliest_year
+chembl_id,canonical_smiles,cpd_earliest_year
 CHEMBL1,COc1ccc2c(c1)OC[C@H]1[C@@H]2C2=C(OC1(C)C)C1=C(C(=O)C2=O)[C@H]2c3ccc(OC)cc3OC[C@H]2C(C)(C)O1,2008.0
 CHEMBL10,C[S+]([O-])c1ccc(-c2nc(-c3ccc(F)cc3)c(-c3ccncc3)[nH]2)cc1,1995.0
 CHEMBL100,CC1(C)Oc2ccc(C#N)cc2[C@@H](N2CCCC2=O)[C@@H]1O,1986.0

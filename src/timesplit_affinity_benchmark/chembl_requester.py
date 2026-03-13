@@ -19,18 +19,18 @@ class ChEMBLRequester:
     def get_chembl_id_to_smiles(self) -> list[dict[str, str | int | None]]:
         """Return all molecules with SMILES and earliest publication year.
 
-        earliest_year is the minimum publication year across all compound records associated
+        cpd_earliest_year is the minimum publication year across all compound records associated
         with the molecule, or None if no year is available.
         """
         query = """
-        SELECT md.chembl_id, cs.canonical_smiles, MIN(d.year) AS earliest_year
+        SELECT md.chembl_id, cs.canonical_smiles, MIN(d.year) AS cpd_earliest_year
         FROM molecule_dictionary md
         JOIN compound_structures cs ON md.molregno = cs.molregno
         LEFT JOIN compound_records cr ON cr.molregno = md.molregno
         LEFT JOIN docs d ON d.doc_id = cr.doc_id
         GROUP BY md.chembl_id, cs.canonical_smiles
         """
-        col_order = ["chembl_id", "canonical_smiles", "earliest_year"]
+        col_order = ["chembl_id", "canonical_smiles", "cpd_earliest_year"]
         self.cur.execute(query)
         rows = self.cur.fetchall()
         return [{k: v for k, v in zip(col_order, row)} for row in rows]
