@@ -3,6 +3,7 @@ from functools import partial
 
 import numpy as np
 from rdkit import DataStructs
+from tqdm import tqdm
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 
@@ -76,10 +77,14 @@ def filter_by_tanimoto(
         n_jobs = multiprocessing.cpu_count()
 
     if n_jobs == 1:
-        results = [worker(item) for item in candidate_bvs]
+        results = [worker(item) for item in tqdm(candidate_bvs, desc="Tanimoto filter")]
     else:
         with multiprocessing.Pool(processes=n_jobs) as pool:
-            results = pool.map(worker, candidate_bvs, chunksize=chunksize)
+            results = list(tqdm(
+                pool.imap(worker, candidate_bvs, chunksize=chunksize),
+                total=len(candidate_bvs),
+                desc=f"Tanimoto filter ({n_jobs} workers)",
+            ))
 
     # Results may arrive out of order from pool.map, but map preserves order.
     # Sort by index defensively anyway.

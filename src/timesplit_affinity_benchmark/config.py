@@ -16,6 +16,7 @@ class ChEMBLConfig:
 class PipelineConfig:
     tanimoto_threshold: float
     keep_not_novel: bool
+    n_jobs: int = 1
     activity_limit: int | None = None
 
 
