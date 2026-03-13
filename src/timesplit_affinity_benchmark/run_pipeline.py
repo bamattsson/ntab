@@ -48,6 +48,7 @@ def main() -> None:
 
     compounds_df = pd.DataFrame(requester.get_chembl_id_to_smiles())
     targets_df = pd.DataFrame(requester.get_single_protein_targets())
+    assay_docs_df = pd.DataFrame(requester.get_assay_docs())
 
     # Filter compounds to only those referenced by the (possibly limited) activities
     relevant_ids = set(activities_df["ligand_chembl_id"].dropna())
@@ -59,7 +60,8 @@ def main() -> None:
     activities_df.to_parquet(INTERMEDIATE_DIR / "activities_raw.parquet", index=False)
     compounds_df.to_parquet(INTERMEDIATE_DIR / "compounds_raw.parquet", index=False)
     targets_df.to_parquet(INTERMEDIATE_DIR / "targets_raw.parquet", index=False)
-    print("  Saved activities_raw.parquet, compounds_raw.parquet, targets_raw.parquet.")
+    assay_docs_df.to_parquet(INTERMEDIATE_DIR / "assay_docs.parquet", index=False)
+    print("  Saved activities_raw.parquet, compounds_raw.parquet, targets_raw.parquet, assay_docs.parquet.")
 
     # ------------------------------------------------------------------
     # STEP 2: Compute fingerprints

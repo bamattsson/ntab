@@ -130,6 +130,31 @@ class ChEMBLRequester:
             results.append({k: record[k] for k in final_col_order})
         return results
 
+    def get_assay_docs(self) -> list[dict[str, str | None]]:
+        """Return document metadata for all assays.
+
+        Args:
+            None
+
+        Returns:
+            List of dicts with keys: assay_chembl_id, doc_chembl_id, doi, title, src_description.
+        """
+        query = """
+        SELECT
+            a.chembl_id AS assay_chembl_id,
+            d.chembl_id AS doc_chembl_id,
+            d.doi,
+            d.title,
+            s.src_description
+        FROM assays a
+        JOIN docs d ON a.doc_id = d.doc_id
+        LEFT JOIN source s ON d.src_id = s.src_id
+        """
+        col_order = ["assay_chembl_id", "doc_chembl_id", "doi", "title", "src_description"]
+        self.cur.execute(query)
+        rows = self.cur.fetchall()
+        return [{k: v for k, v in zip(col_order, row)} for row in rows]
+
     def get_all_single_protein_activity_data(
             self,
             target_chembl_ids: Optional[list[str]] = None,
