@@ -1,0 +1,11 @@
+chembl_requester:
+  host:      # e.g. localhost
+  user:      # your PostgreSQL username
+  password:  # your PostgreSQL password
+  dbname:    # e.g. chembl_36
+
+pipeline:
+  tanimoto_threshold: 0.35  # compounds with max Tanimoto similarity >= this are excluded from val/test
+  keep_not_novel_in_test: false  # set to true to retain "2024_not_novel" rows in the output
+  n_jobs: -1   # parallel workers for fingerprint and compounds similarity computation: -1 -> use all cores
+  activity_limit: null  # set to an integer (e.g. 10000) for a smaller test run; null = full dataset
