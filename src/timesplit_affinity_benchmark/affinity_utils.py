@@ -52,10 +52,13 @@ def compute_pchembl_filled(row: pd.Series) -> float:
     """
     if row["standard_units"] != "nM":
         return np.nan
-    val = row["standard_value"]
-    if val is None or not isinstance(val, (int, float)) or np.isnan(float(val)):
+    try:
+        val = float(row["standard_value"])
+    except (TypeError, ValueError):
         return np.nan
-    return round(-np.log10(float(val) * 1e-9), 2)
+    if np.isnan(val):
+        return np.nan
+    return round(-np.log10(val * 1e-9), 2)
 
 
 def add_pchembl_columns(df: pd.DataFrame) -> pd.DataFrame:

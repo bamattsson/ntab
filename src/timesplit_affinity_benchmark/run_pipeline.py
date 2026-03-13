@@ -135,7 +135,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("Step 6: Building final activity file...")
 
-    sim_cols = compounds_df[["cpd_earliest_year", "canonical_smiles", "mw_freebase", "molecule_type",
+    sim_cols = compounds_df[["cpd_earliest_year", "canonical_smiles", "mw_freebase",
                               "max_sim_pre_2024", "most_sim_cpd_pre_2024",
                               "max_sim_pre_2023", "most_sim_cpd_pre_2023"]]
     activities_df = activities_df.merge(
@@ -148,6 +148,17 @@ def main() -> None:
     activities_df = activities_df[activities_df["split"].notna()]
     if not config.pipeline.keep_not_novel_in_test:
         activities_df = activities_df[activities_df["split"] != "2024_not_novel"]
+
+    final_col_order = [
+        "target_chembl_id", "assay_chembl_id", "ligand_chembl_id",
+        "standard_type", "pchembl_relation", "pchembl_value_filled",
+        "split", "mw_freebase", "mutation", "data_validity_comment", "potential_duplicate",
+        "doc_year", "cpd_earliest_year",
+        "max_sim_pre_2024", "most_sim_cpd_pre_2024",
+        "max_sim_pre_2023", "most_sim_cpd_pre_2023",
+        "canonical_smiles",
+    ]
+    activities_df = activities_df[final_col_order]
 
     activities_df.to_parquet(OUT_DIR / "activities.parquet", index=False)
     print(f"  Saved activities.parquet: {activities_df.shape}")

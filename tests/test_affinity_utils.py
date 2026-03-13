@@ -57,6 +57,14 @@ def test_compute_pchembl_filled_none_value_returns_nan():
     assert np.isnan(compute_pchembl_filled(row))
 
 
+def test_compute_pchembl_filled_decimal_value():
+    """Decimal type from psycopg2/PostgreSQL NUMERIC columns must be handled."""
+    from decimal import Decimal
+    row = pd.Series({"standard_value": Decimal("20000.0000000"), "standard_units": "nM"})
+    result = compute_pchembl_filled(row)
+    assert result == pytest.approx(4.70, abs=0.01)
+
+
 # ---------------------------------------------------------------------------
 # add_pchembl_columns
 # ---------------------------------------------------------------------------

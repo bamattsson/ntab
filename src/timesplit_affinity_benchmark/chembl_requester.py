@@ -24,21 +24,18 @@ class ChEMBLRequester:
 
         mw_freebase is the molecular weight of the parent compound (salt/counterion stripped),
         from compound_properties. None if not available.
-
-        molecule_type is the ChEMBL molecule type (e.g. 'Small molecule', 'Protein'), from
-        molecule_dictionary. None if not set.
         """
         query = """
         SELECT md.chembl_id, cs.canonical_smiles, MIN(d.year) AS cpd_earliest_year,
-               cp.mw_freebase, md.molecule_type
+               cp.mw_freebase
         FROM molecule_dictionary md
         JOIN compound_structures cs ON md.molregno = cs.molregno
         LEFT JOIN compound_records cr ON cr.molregno = md.molregno
         LEFT JOIN docs d ON d.doc_id = cr.doc_id
         LEFT JOIN compound_properties cp ON md.molregno = cp.molregno
-        GROUP BY md.chembl_id, cs.canonical_smiles, cp.mw_freebase, md.molecule_type
+        GROUP BY md.chembl_id, cs.canonical_smiles, cp.mw_freebase
         """
-        col_order = ["chembl_id", "canonical_smiles", "cpd_earliest_year", "mw_freebase", "molecule_type"]
+        col_order = ["chembl_id", "canonical_smiles", "cpd_earliest_year", "mw_freebase"]
         self.cur.execute(query)
         rows = self.cur.fetchall()
         return [{k: v for k, v in zip(col_order, row)} for row in rows]
