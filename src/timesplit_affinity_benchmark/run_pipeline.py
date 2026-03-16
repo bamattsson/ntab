@@ -154,7 +154,7 @@ def main() -> None:
     final_col_order = [
         "target_chembl_id", "assay_chembl_id", "ligand_chembl_id",
         "standard_type", "pchembl_relation", "pchembl_value_filled",
-        "split", "mw_freebase", "mutation", "data_validity_comment", "potential_duplicate",
+        "split", "mw_freebase", "data_validity_comment", "potential_duplicate",
         "doc_year", "cpd_earliest_year",
         "max_sim_pre_2024", "most_sim_cpd_pre_2024",
         "max_sim_pre_2023", "most_sim_cpd_pre_2023",

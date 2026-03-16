@@ -168,8 +168,10 @@ class ChEMBLRequester:
         - standard_type IN ('Ki', 'Kd', 'IC50')
         - data_validity_comment IS NULL or 'Manually validated' (excludes unreliable entries)
         - relationship_type IN ('D', 'H') (direct or homologue mappings only)
+        - mutation IS NULL (wildtype protein only; excludes variant assays)
 
-        Mutation annotations from variant_sequences are included when available (LEFT JOIN).
+        Mutation annotations from variant_sequences are included when available (LEFT JOIN),
+        and any assay linked to a mutant sequence is excluded.
 
         Args:
             target_chembl_ids: Optional list of ChEMBL target IDs to restrict the query.
@@ -189,8 +191,7 @@ class ChEMBLRequester:
             a.standard_units,
             d.year AS doc_year,
             a.data_validity_comment,
-            a.potential_duplicate,
-            vs.mutation
+            a.potential_duplicate
         FROM activities a
         JOIN assays a2 ON a2.assay_id = a.assay_id
         JOIN molecule_dictionary md ON md.molregno = a.molregno
@@ -203,12 +204,13 @@ class ChEMBLRequester:
             AND a2.relationship_type IN ('D', 'H')
             AND a.standard_type IN ('Ki', 'Kd', 'IC50')
             AND (a.data_validity_comment IS NULL OR a.data_validity_comment = 'Manually validated')
+            AND vs.mutation IS NULL
         """
         col_order = [
             "target_chembl_id", "assay_chembl_id", "ligand_chembl_id",
             "standard_type", "standard_relation", "pchembl_value",
             "standard_value", "standard_units", "doc_year",
-            "data_validity_comment", "potential_duplicate", "mutation",
+            "data_validity_comment", "potential_duplicate",
         ]
         params = None
         if target_chembl_ids is not None:
