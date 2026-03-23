@@ -79,7 +79,6 @@ One row per activity measurement. Columns:
 | `pchembl_value_filled` | pChEMBL value (−log10 scale). Uses ChEMBL's `pchembl_value` where available; otherwise computed as −log10(`standard_value` × 10⁻⁹) for nM measurements. |
 | `split` | Split label (see below) |
 | `mw_freebase` | Molecular weight of the parent compound (salt-stripped), from ChEMBL `compound_properties` |
-| `mutation` | Variant/mutation annotation from ChEMBL `variant_sequences`, if available |
 | `data_validity_comment` | ChEMBL data validity flag (`NULL` or `Manually validated`) |
 | `potential_duplicate` | ChEMBL duplicate flag |
 | `doc_year` | Publication year of the assay document |
@@ -120,9 +119,28 @@ Intermediate files written between steps for inspection and debugging:
 | `compounds_with_novelty.parquet` | Compounds enriched with novelty columns for both the 2023 and 2024 cutoffs |
 | `split_assignments.parquet` | Activities with split labels before final column selection and filtering |
 
+## Data inclusion criteria
+
+The following filters are applied when querying ChEMBL:
+
+| Criterion | Value | Rationale |
+|---|---|---|
+| Target type | `SINGLE PROTEIN` only | Excludes protein complexes, cell lines, organisms, etc. |
+| Assay type | `B` (binding) only | Excludes functional, ADMET, and other non-binding assays |
+| Confidence score | `9` (maximum) | Direct single-protein target assignment; excludes lower-confidence mappings |
+| Relationship type | `D` or `H` | Direct or homologous target mappings; excludes non-specific and unknown relationships |
+| Measurement type | `Ki`, `Kd`, or `IC50` | Standard binding affinity readouts |
+| Data validity | `NULL` or `Manually validated` | Excludes flagged/unreliable entries |
+| Protein sequence | Wildtype only | Excludes assays against mutant sequences (annotated in `variant_sequences`) |
+
+After ChEMBL retrieval, two further filters determine which rows appear in the final output:
+
+- **No `doc_year`**: rows with a missing publication year cannot be assigned to a split and are excluded.
+- **Novelty (test/val only)**: by default, test-year compounds that are not novel vs. pre-2024 compounds (`2024_not_novel`) are excluded. This can be changed via `keep_not_novel_in_test` in the config.
+
 ## Running tests
 
 ```bash
 uv pip install -e ".[dev]"
-pytest
+uv run pytest
 ```
