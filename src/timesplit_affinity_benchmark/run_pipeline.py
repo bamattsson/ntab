@@ -42,6 +42,7 @@ def main() -> None:
     print(f"  Activities raw: {activities_df.shape}")
 
     if config.pipeline.activity_limit is not None:
+        # Use this when debugging to make runs faster
         n = min(config.pipeline.activity_limit, len(activities_df))
         activities_df = activities_df.sample(n=n, random_state=42).reset_index(drop=True)
         print(f"  Activities after limit: {activities_df.shape}")
@@ -106,14 +107,14 @@ def main() -> None:
     novel_2023 = novelty_2023["is_novel_2023"]
     print(f"  2023 cutoff — novel: {(novel_2023 == True).sum()}, not novel: {(novel_2023 == False).sum()}, reference: {novel_2023.isna().sum()}")
 
-    # Enrich compounds_df with all 6 novelty columns and save as intermediate
+    # Add 6 novelty columns to compounds_df and save as intermediate
     compounds_df = compounds_df.set_index("chembl_id")
     compounds_df = compounds_df.join(novelty_2024).join(novelty_2023)
     compounds_df.to_parquet(INTERMEDIATE_DIR / "compounds_with_novelty.parquet")
     print("  Saved compounds_with_novelty.parquet.")
 
     # ------------------------------------------------------------------
-    # STEP 4: Add pChEMBL columns
+    # STEP 4: Extend pchembl_value columns to include values with relation != "="
     # ------------------------------------------------------------------
     print("Step 4: Adding pChEMBL columns...")
     n_original = activities_df["pchembl_value"].notna().sum()
