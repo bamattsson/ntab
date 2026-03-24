@@ -58,4 +58,4 @@ Per-assay Pearson r and the overall size-weighted mean are printed to stdout.
 
 ---
 
-On commit `` with a RTX4090 we get the results 0.663, but the results can vary up or down a few 0.01 depending on random seeds.
+On commit `2690a81c4` with a nvidia GPU we get the results 0.663, but the results can vary up or down a few 0.01 depending on random seeds.
