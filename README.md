@@ -9,6 +9,8 @@ The benchmark is constructed from ChEMBL binding affinity data using two complem
 1. **Time split**: activities are partitioned by assay publication year (train: before 2023, val: 2023, test: 2024+).
 2. **Novelty filter**: test and validation compounds are filtered by ECFP4 Tanimoto similarity — a compound is kept only if its maximum similarity to any earlier compound is below 0.35.
 
+There is also code for a ligand-only baseline, for more information on how to use this read (docs/baseline.md)[docs/baseline.md].
+
 ## Installation
 
 ### uv (recommended)
@@ -16,9 +18,8 @@ The benchmark is constructed from ChEMBL binding affinity data using two complem
 [uv](https://github.com/astral-sh/uv) is recommended. Requires Python 3.10+.
 
 ```bash
-uv venv
+uv sync
 source .venv/bin/activate
-uv pip install -e .
 ```
 
 ### conda
@@ -53,15 +54,15 @@ The benchmark is generated from a local ChEMBL PostgreSQL database. We used ChEM
 
 ### 2. Configure the pipeline
 
-Add your database credentials to `config.yaml`.
+Add your ChEMBL database credentials to `configs/benchmark.yaml`.
 
 ### 3. Run the pipeline
 
 ```bash
-python src/timesplit_affinity_benchmark/run_pipeline.py --config config.yaml
+python src/timesplit_affinity_benchmark/run_pipeline.py --config configs/benchmark.yaml
 ```
 
-The pipeline runs in 7 steps and writes intermediate files to `intermediate_out/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 20 minutes on a machine with 32 cores and requires ~40 GB of RAM, dominated by loading fingerprints for the Tanimoto similarity computation.
+The pipeline runs in 7 steps and writes intermediate files to `intermediate_out/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 20 minutes on a machine with 32 cores and requires ~40 GB of RAM.
 
 ## Output files
 

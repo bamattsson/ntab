@@ -1,11 +1,11 @@
 # Preprocessing config for the affinity baseline.
-# Run: uv run python -m bind_pred_baseline.preprocess_training_data --config configs/data.yaml
+# Run: python -m bind_pred_baseline.preprocess_training_data --config configs/baseline/data.yaml
 
 paths:
-  activities_parquet: ../timesplit-affinity-benchmark/out/activities.parquet
-  targets_parquet: ../timesplit-affinity-benchmark/out/targets.parquet
-  compounds_parquet: ../timesplit-affinity-benchmark/intermediate_out/compounds_raw.parquet
-  output_dir: out/data_preprocessing
+  activities_parquet: out/activities.parquet
+  targets_parquet: out/targets.parquet
+  compounds_parquet: intermediate_out/compounds_raw.parquet
+  output_dir: out_baseline/data_preprocessing
 
 # Fingerprint type: "binary" (0/1 bits) or "count" (substructure occurrence counts).
 fp_type: count

@@ -28,7 +28,8 @@ The primary validation metric is size-weighted mean Pearson r across assays
 Install with the `[model]` extras (includes torch, lightning, biopython, etc.):
 
 ```bash
-uv pip install -e ".[model]"
+uv sync --extra model
+source .venv/bin/activate
 ```
 
 ---
@@ -41,7 +42,7 @@ Requires `activities.parquet`, `targets.parquet`, and `compounds_raw.parquet`
 from the benchmark pipeline (see main README).
 
 ```bash
-uv run python -m bind_pred_baseline.preprocess_training_data \
+python -m bind_pred_baseline.preprocess_training_data \
     --config configs/baseline/data.yaml
 ```
 
@@ -62,7 +63,7 @@ the most sequence-similar training target via BLOSUM62 global alignment.
 ### Step 2 — Train
 
 ```bash
-uv run python -m bind_pred_baseline.train fit --config configs/baseline/train.yaml
+python -m bind_pred_baseline.train fit --config configs/baseline/train.yaml
 ```
 
 The best checkpoint (by `val_pearson_r`) is saved under
@@ -71,7 +72,7 @@ The best checkpoint (by `val_pearson_r`) is saved under
 ### Step 3 — Evaluate on test set
 
 ```bash
-uv run python -m bind_pred_baseline.train test \
+python -m bind_pred_baseline.train test \
   --config out/lightning_logs/version_X/config.yaml \
   --ckpt_path out/lightning_logs/version_X/checkpoints/<best>.ckpt
 ```
@@ -82,7 +83,7 @@ Edit `configs/baseline/predict.yaml` to set `predict_input_csv` (CSV with
 columns `ligand_name`, `uniprot_id`, `smiles`), then run:
 
 ```bash
-uv run python -m bind_pred_baseline.train predict \
+python -m bind_pred_baseline.train predict \
   --config out/lightning_logs/version_X/config.yaml \
   --ckpt_path out/lightning_logs/version_X/checkpoints/<best>.ckpt \
   --config configs/baseline/predict.yaml
@@ -101,21 +102,21 @@ assume that the FEP+ data files are available at
 **Step 1 — Preprocess with the FEP+ data split:**
 
 ```bash
-uv run python -m bind_pred_baseline.preprocess_training_data \
+python -m bind_pred_baseline.preprocess_training_data \
     --config configs/baseline_fep_split/data.yaml
 ```
 
 **Step 2 — Train:**
 
 ```bash
-uv run python -m bind_pred_baseline.train fit \
+python -m bind_pred_baseline.train fit \
     --config configs/baseline_fep_split/train.yaml
 ```
 
 **Step 3 — Predict on the FEP+ benchmark:**
 
 ```bash
-uv run python -m bind_pred_baseline.train predict \
+python -m bind_pred_baseline.train predict \
   --config out/lightning_logs/version_X/config.yaml \
   --ckpt_path out/lightning_logs/version_X/checkpoints/<best>.ckpt \
   --config configs/baseline_fep_split/predict.yaml
@@ -124,7 +125,7 @@ uv run python -m bind_pred_baseline.train predict \
 **Step 4 — Evaluate Pearson r:**
 
 ```bash
-uv run python scripts/eval_fep_benchmark.py \
+python scripts/eval_fep_benchmark.py \
   --predictions predictions.csv \
   --benchmark ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv
 ```

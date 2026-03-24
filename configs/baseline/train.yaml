@@ -1,6 +1,6 @@
 # Training config.
 # Run with:
-#   uv run python -m bind_pred_baseline.train fit --config configs/train.yaml
+#   python -m bind_pred_baseline.train fit --config configs/baseline/train.yaml
 
 seed_everything: 42
 
@@ -20,7 +20,7 @@ trainer:
         filename: best-{epoch}-{val_pearson_r:.4f}
 
 data:
-  data_dir: out/data_preprocessing
+  data_dir: out_baseline/data_preprocessing
   num_workers: 4
 
 model:
