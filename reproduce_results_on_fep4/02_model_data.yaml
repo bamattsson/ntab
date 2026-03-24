@@ -1,0 +1,15 @@
+# Preprocessing config for the affinity baseline — FEP benchmark data split.
+# Run: uv run python -m bind_pred_baseline.preprocess_training_data --config reproduce_results_on_fep4/02_model_data.yaml
+
+paths:
+  activities_parquet: ../timesplit-affinity-benchmark/out/activities.parquet
+  targets_parquet: ../timesplit-affinity-benchmark/out/targets.parquet
+  compounds_parquet: ../timesplit-affinity-benchmark/intermediate_out/compounds_raw.parquet
+  output_dir: out_baseline/data_preprocessing_FEP4_split
+fp_type: count
+# This should contain the FEP+ 4 data split as uniprot_id -> train/val/test
+split_from_file: ../paper_data_leakage_FEPp_benchmark/data/out/FEP_data_split.csv
+val_splits:
+  - val  # Needs to be val for this dataset
+n_jobs: 8
+oov_min_train_datapoints: 100

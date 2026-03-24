@@ -73,8 +73,8 @@ The best checkpoint (by `val_pearson_r`) is saved under
 
 ```bash
 python -m bind_pred_baseline.train test \
-  --config out/lightning_logs/version_X/config.yaml \
-  --ckpt_path out/lightning_logs/version_X/checkpoints/<best>.ckpt
+  --config out_baseline/lightning_logs/version_X/config.yaml \
+  --ckpt_path out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt
 ```
 
 ### Step 4 — Predict on new compounds
@@ -84,53 +84,12 @@ columns `ligand_name`, `uniprot_id`, `smiles`), then run:
 
 ```bash
 python -m bind_pred_baseline.train predict \
-  --config out/lightning_logs/version_X/config.yaml \
-  --ckpt_path out/lightning_logs/version_X/checkpoints/<best>.ckpt \
+  --config out_baseline/lightning_logs/version_X/config.yaml \
+  --ckpt_path out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
   --config configs/baseline/predict.yaml
 ```
 
 Predictions are written to `predictions.csv`.
-
----
-
-## Reproduce FEP+ benchmark results
-
-These steps reproduce the evaluation on the FEP+ benchmark dataset. They
-assume that the FEP+ data files are available at
-`../paper_data_leakage_FEPp_benchmark/data/out/`.
-
-**Step 1 — Preprocess with the FEP+ data split:**
-
-```bash
-python -m bind_pred_baseline.preprocess_training_data \
-    --config configs/baseline_fep_split/data.yaml
-```
-
-**Step 2 — Train:**
-
-```bash
-python -m bind_pred_baseline.train fit \
-    --config configs/baseline_fep_split/train.yaml
-```
-
-**Step 3 — Predict on the FEP+ benchmark:**
-
-```bash
-python -m bind_pred_baseline.train predict \
-  --config out/lightning_logs/version_X/config.yaml \
-  --ckpt_path out/lightning_logs/version_X/checkpoints/<best>.ckpt \
-  --config configs/baseline_fep_split/predict.yaml
-```
-
-**Step 4 — Evaluate Pearson r:**
-
-```bash
-python scripts/eval_fep_benchmark.py \
-  --predictions predictions.csv \
-  --benchmark ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv
-```
-
-Per-assay Pearson r and the overall size-weighted mean are printed to stdout.
 
 ---
 

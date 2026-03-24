@@ -8,7 +8,7 @@
 trainer:
   accelerator: auto
   devices: 1
-  logger: false
+  default_root_dir: out_baseline/preds/
   callbacks:
     - class_path: bind_pred_baseline.model_utils.PredictWriterCallback
       init_args:

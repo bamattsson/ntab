@@ -9,7 +9,7 @@ trainer:
   accelerator: auto
   devices: 1
   log_every_n_steps: 50
-  default_root_dir: out
+  default_root_dir: out_baseline
   callbacks:
     - class_path: bind_pred_baseline.model_utils.MetricsPlotCallback
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint

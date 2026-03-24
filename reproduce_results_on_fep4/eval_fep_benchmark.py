@@ -25,7 +25,7 @@ def main() -> None:
 
     # Note: predictions are all computed in IC50 mode even when the benchmark
     # measurement_type is Ki or Kd. In pchembl space (-log10 M), the difference
-    # between IC50 and Ki/Kd is a fixed additive constant per compound type, so
+    # between IC50 and Ki/Kd in model output is a fixed additive constant per compound type, so
     # relative rankings within an assay are preserved and Pearson r is unaffected.
 
     df = bench.merge(preds, on="ligand_name", how="inner")

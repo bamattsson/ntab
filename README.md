@@ -142,6 +142,6 @@ After ChEMBL retrieval, two further filters determine which rows appear in the f
 ## Running tests
 
 ```bash
-uv pip install -e ".[dev]"
+uv sync --extra dev
 uv run pytest
 ```
