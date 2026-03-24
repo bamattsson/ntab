@@ -53,7 +53,7 @@ The benchmark is generated from a local ChEMBL PostgreSQL database. We used ChEM
 
 ### 2. Configure the pipeline
 
-Add your database credentials to `config.yaml` and adjust `n_jobs` to match your CPU count.
+Add your database credentials to `config.yaml`.
 
 ### 3. Run the pipeline
 

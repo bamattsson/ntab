@@ -1,0 +1,25 @@
+# Preprocessing config for the affinity baseline.
+# Run: uv run python -m bind_pred_baseline.preprocess_training_data --config configs/data.yaml
+
+paths:
+  activities_parquet: ../timesplit-affinity-benchmark/out/activities.parquet
+  targets_parquet: ../timesplit-affinity-benchmark/out/targets.parquet
+  compounds_parquet: ../timesplit-affinity-benchmark/intermediate_out/compounds_raw.parquet
+  output_dir: out/data_preprocessing
+
+# Fingerprint type: "binary" (0/1 bits) or "count" (substructure occurrence counts).
+fp_type: count
+
+# Which val splits to include during training validation.
+# Options: [val_novel], [val_not_novel], or [val_novel, val_not_novel]
+val_splits:
+  - val_novel
+  - val_not_novel
+
+# Number of parallel worker processes for fingerprint generation and OOV target alignment.
+# -1 uses all available CPUs.
+n_jobs: 8
+
+# Minimum number of training datapoints a target must have to be eligible
+# as an OOV mapping destination. Set to 0 to disable filtering.
+oov_min_train_datapoints: 100

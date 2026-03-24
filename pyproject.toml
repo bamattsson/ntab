@@ -18,10 +18,25 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+model = [
+    "torch>=2.0,<2.6",
+    "lightning>=2.0",
+    "jsonargparse[signatures]>=4.27.7",
+    "biopython>=1.80",
+    "scipy",
+    "matplotlib",
+    "notebook",
+]
 dev = [
     "pytest",
     "pytest-mock",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/timesplit_affinity_benchmark"]
+packages = [
+    "src/timesplit_affinity_benchmark",
+    "src/bind_pred_baseline",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

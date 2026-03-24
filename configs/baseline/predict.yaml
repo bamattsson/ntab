@@ -1,0 +1,20 @@
+# Prediction config.
+# Run with:
+#   uv run python -m bind_pred_baseline.train predict \
+#     --config out/lightning_logs/version_X/config.yaml \
+#     --ckpt_path out/lightning_logs/version_X/checkpoints/<best-checkpoint>.ckpt \
+#     --config configs/predict.yaml
+
+trainer:
+  accelerator: auto
+  devices: 1
+  logger: false
+  callbacks:
+    - class_path: bind_pred_baseline.model_utils.PredictWriterCallback
+      init_args:
+        output_csv: predictions.csv
+
+data:
+  data_dir: out/data_preprocessing  # This is the directory where the models training data exists
+  predict_input_csv:  # Should contain: ligand_name, uniprot_id, smiles
+  predict_standard_type: IC50   # Options: IC50, Ki, Kd
