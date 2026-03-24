@@ -2,7 +2,7 @@
 
 These steps reproduce the evaluation of the baseline model on the FEP+ 4 benchmark dataset. They assume that that you:
 - have a local version of the ChEMBL database (v36) as a postres DB
-- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from (here)[https://github.com/bamattsson/paper_data_leakage_FEPp_benchmark/tree/4c9cd86fd2891cfef11769a2a4b19bc92fb3b5e3/data/out] and that they exist in `../paper_data_leakage_FEPp_benchmark/data/out/` relative to this repo.
+- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from [here](https://github.com/bamattsson/paper_data_leakage_FEPp_benchmark/tree/4c9cd86fd2891cfef11769a2a4b19bc92fb3b5e3/data/out) and that they exist in `../paper_data_leakage_FEPp_benchmark/data/out/` relative to this repo.
 
 **Step 0 – Install packages:**
 

@@ -9,7 +9,7 @@ The benchmark is constructed from ChEMBL binding affinity data using two complem
 1. **Time split**: activities are partitioned by assay publication year (train: before 2023, val: 2023, test: 2024+).
 2. **Novelty filter**: test and validation compounds are filtered by ECFP4 Tanimoto similarity — a compound is kept only if its maximum similarity to any earlier compound is below 0.35.
 
-There is also code for a ligand-only baseline, for more information on how to use this read (docs/baseline.md)[docs/baseline.md].
+There is also code for a ligand-only baseline, for more information on how to use this read [docs/baseline.md](docs/baseline.md).
 
 ## Installation
 
