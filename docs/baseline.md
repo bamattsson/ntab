@@ -102,4 +102,3 @@ The 12 physicochemical descriptors computed by RDKit:
 `RingCount`, `NumAromaticRings`, `HeavyAtomCount`
 
 Properties are normalised (mean/std) using training-set statistics only.
-The scaler is stored in `mol_properties.npz` and reused at inference time.

@@ -9,7 +9,9 @@ The benchmark is constructed from ChEMBL binding affinity data using two complem
 1. **Time split**: activities are partitioned by assay publication year (train: before 2023, val: 2023, test: 2024+).
 2. **Novelty filter**: test and validation compounds are filtered by ECFP4 Tanimoto similarity — a compound is kept only if its maximum similarity to any earlier compound is below 0.35.
 
-There is also code for a ligand-only baseline, for more information on how to use this read [docs/baseline.md](docs/baseline.md).
+Val and test assays are further filtered to retain only well-characterised (assay, measurement-type) groups: minimum 10 unique compounds, pChEMBL SD ≥ 0.5, equality-relation measurements only, and at most one assay per publication.
+
+The repo also contains code for a ligand-only baseline ML model, for more information on how to use this read [docs/baseline.md](docs/baseline.md).
 
 ## Installation
 
@@ -32,37 +34,21 @@ pip install -e .
 
 ## Reproducing the data
 
-### 1. Set up ChEMBL
+### Prerequisites: Set up ChEMBL
 
-The benchmark is generated from a local ChEMBL PostgreSQL database. We used ChEMBL 36, but other versions should work as well. To set it up:
+The benchmark is generated from a local ChEMBL PostgreSQL database. See [docs/chembl_setup.md](docs/chembl_setup.md) for instructions on setting up this database locally.
 
-1. Access the psql interface and create a new database:
-   ```bash
-   sudo -u postgres psql
-   create database chembl_36;
-   ```
-
-2. Download the `chembl_36_postgresql.tar.gz` file and extract it:
-   ```bash
-   tar xvzf chembl_36_postgresql.tar.gz
-   ```
-
-3. Restore the database (run from bash, not from inside psql):
-   ```bash
-   pg_restore --no-owner -U <user> --dbname=chembl_36 chembl_36/chembl_36_postgresql/chembl_36_postgresql.dmp --verbose
-   ```
-
-### 2. Configure the pipeline
+### 1. Configure the pipeline
 
 Add your ChEMBL database credentials to `configs/benchmark.yaml`.
 
-### 3. Run the pipeline
+### 2. Run the pipeline
 
 ```bash
-python src/timesplit_affinity_benchmark/run_pipeline.py --config configs/benchmark.yaml
+python -m timesplit_affinity_benchmark.run_pipeline --config configs/benchmark.yaml
 ```
 
-The pipeline runs in 7 steps and writes intermediate files to `intermediate_out/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 20 minutes on a machine with 32 cores and requires ~40 GB of RAM.
+The pipeline runs in 8 steps and writes intermediate files to `intermediate_out/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 20 minutes on a machine with 32 cores and requires ~40 GB of RAM.
 
 ## Output files
 
@@ -134,10 +120,11 @@ The following filters are applied when querying ChEMBL:
 | Data validity | `NULL` or `Manually validated` | Excludes flagged/unreliable entries |
 | Protein sequence | Wildtype only | Excludes assays against mutant sequences (annotated in `variant_sequences`) |
 
-After ChEMBL retrieval, two further filters determine which rows appear in the final output:
+After ChEMBL retrieval, three further filters determine which rows appear in the final output:
 
 - **No `doc_year`**: rows with a missing publication year cannot be assigned to a split and are excluded.
 - **Novelty (test/val only)**: by default, test-year compounds that are not novel vs. pre-2024 compounds (`2024_not_novel`) are excluded. This can be changed via `keep_not_novel_in_test` in the config.
+- **Assay quality (test/val only)**: (assay, measurement-type) groups are removed if they have fewer than 10 unique compounds, a pChEMBL SD below 0.5, non-equality relations, or share a publication with another passing assay. Configurable via `filter_val_and_test_sets` in the config.
 
 ## Running tests
 
