@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 
 from timesplit_affinity_benchmark.affinity_utils import add_pchembl_columns
+from timesplit_affinity_benchmark.assay_filter import filter_assay_types
 from timesplit_affinity_benchmark.chembl_requester import ChEMBLRequester
 from timesplit_affinity_benchmark.config import load_config
 from timesplit_affinity_benchmark.mol_fingerprints import compute_ecfp4_fingerprints
@@ -134,9 +135,31 @@ def main() -> None:
     print("  Saved split_assignments.parquet.")
 
     # ------------------------------------------------------------------
-    # STEP 6: Build final activity file
+    # STEP 6: Filter assay-types in val/test splits (optional)
     # ------------------------------------------------------------------
-    print("Step 6: Building final activity file...")
+    af = config.pipeline.filter_val_and_test_sets
+    if af is not None:
+        print("Step 6: Filtering assay-types in val/test splits...")
+        before = len(activities_df)
+        activities_df = filter_assay_types(
+            activities_df=activities_df,
+            assay_docs_df=assay_docs_df,
+            apply_to=af.apply_to,
+            only_equal_relation=af.only_equal_relation,
+            min_cpd_per_assay=af.min_cpd_per_assay,
+            min_std=af.min_std,
+            one_assay_per_doi=af.one_assay_per_doi,
+        )
+        print(f"  Rows removed: {before - len(activities_df):,}  ({before:,} → {len(activities_df):,})")
+        print("  Split distribution after filtering:")
+        print(activities_df["split"].value_counts(dropna=False).to_string())
+    else:
+        print("Step 6: Assay filtering disabled (filter_val_and_test_sets is null).")
+
+    # ------------------------------------------------------------------
+    # STEP 7: Build final activity file
+    # ------------------------------------------------------------------
+    print("Step 7: Building final activity file...")
 
     sim_cols = compounds_df[["cpd_earliest_year", "canonical_smiles", "mw_freebase",
                               "max_sim_pre_2024", "most_sim_cpd_pre_2024",
@@ -167,9 +190,9 @@ def main() -> None:
     print(f"  Saved activities.parquet: {activities_df.shape}")
 
     # ------------------------------------------------------------------
-    # STEP 7: Save target file
+    # STEP 8: Save target file
     # ------------------------------------------------------------------
-    print("Step 7: Saving target file...")
+    print("Step 8: Saving target file...")
     targets_df.to_parquet(OUT_DIR / "targets.parquet", index=False)
     print(f"  Saved targets.parquet: {targets_df.shape}")
 
