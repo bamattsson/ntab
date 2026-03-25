@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pytest
 import torch
@@ -45,50 +47,50 @@ def _make_batch(
 class TestPearsonRPerAssay:
     def test_perfect_correlation_returns_one(self) -> None:
         # Predictions == labels → Pearson r = 1.0
-        vals = torch.tensor([4.0, 5.0, 6.0, 7.0, 8.0])
+        vals = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r = pearson_r_per_assay(preds=vals, labels=vals, assay_ids=assay_ids, min_assay_size=3)
-        assert pytest.approx(r.item(), abs=1e-5) == 1.0
+        r, _ = pearson_r_per_assay(preds=vals, labels=vals, assay_ids=assay_ids, min_assay_size=3)
+        assert pytest.approx(r, abs=1e-5) == 1.0
 
     def test_perfect_anticorrelation_returns_minus_one(self) -> None:
-        preds = torch.tensor([8.0, 7.0, 6.0, 5.0, 4.0])
-        labels = torch.tensor([4.0, 5.0, 6.0, 7.0, 8.0])
+        preds = np.array([8.0, 7.0, 6.0, 5.0, 4.0])
+        labels = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
-        assert pytest.approx(r.item(), abs=1e-5) == -1.0
+        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        assert pytest.approx(r, abs=1e-5) == -1.0
 
     def test_averages_across_assays(self) -> None:
         # Assay A: perfect correlation (r=1), Assay B: perfect anticorrelation (r=-1)
         # Mean should be 0
-        preds  = torch.tensor([1.0, 2.0, 3.0,  3.0, 2.0, 1.0])
-        labels = torch.tensor([1.0, 2.0, 3.0,  1.0, 2.0, 3.0])
+        preds  = np.array([1.0, 2.0, 3.0, 3.0, 2.0, 1.0])
+        labels = np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
         assay_ids = ["A", "A", "A", "B", "B", "B"]
-        r = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
-        assert pytest.approx(r.item(), abs=1e-5) == 0.0
+        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        assert pytest.approx(r, abs=1e-5) == 0.0
 
     def test_assays_below_min_size_are_skipped(self) -> None:
         # Assay A has 5 samples (qualifies), Assay B has 2 (skipped)
         # Only Assay A contributes, which has perfect correlation
-        preds  = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0,   9.0, 1.0])
-        labels = torch.tensor([1.0, 2.0, 3.0, 4.0, 5.0,   1.0, 9.0])
+        preds  = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 9.0, 1.0])
+        labels = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 9.0])
         assay_ids = ["A", "A", "A", "A", "A", "B", "B"]
-        r = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
-        assert pytest.approx(r.item(), abs=1e-5) == 1.0
+        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        assert pytest.approx(r, abs=1e-5) == 1.0
 
     def test_all_assays_below_min_size_returns_nan(self) -> None:
-        preds  = torch.tensor([1.0, 2.0])
-        labels = torch.tensor([1.0, 2.0])
+        preds  = np.array([1.0, 2.0])
+        labels = np.array([1.0, 2.0])
         assay_ids = ["A", "A"]
-        r = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
-        assert torch.isnan(r)
+        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        assert math.isnan(r)
 
     def test_default_min_assay_size_is_10(self) -> None:
         # 9 samples in one assay → should be skipped → NaN
-        preds  = torch.arange(9, dtype=torch.float32)
-        labels = torch.arange(9, dtype=torch.float32)
+        preds  = np.arange(9, dtype=np.float32)
+        labels = np.arange(9, dtype=np.float32)
         assay_ids = ["A"] * 9
-        r = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
-        assert torch.isnan(r)
+        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
+        assert math.isnan(r)
 
 
 # ---------------------------------------------------------------------------

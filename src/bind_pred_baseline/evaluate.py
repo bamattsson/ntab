@@ -176,14 +176,14 @@ def _print_metrics(df: pd.DataFrame, min_assay_size: int = MIN_ASSAY_SIZE) -> No
     for split in sorted(df["split"].unique()):
         mask = (df["split"] == split).values
         split_assay_ids = [aid for aid, m in zip(assay_ids, mask) if m]
-        r = pearson_r_per_assay(
+        r, _ = pearson_r_per_assay(
             preds[mask], labels[mask], split_assay_ids, min_assay_size=min_assay_size
         )
         n_rows = int(mask.sum())
         print(f"  {split:25s}  Pearson r = {float(r):.4f}  (n_rows = {n_rows:,})")
 
     if df["split"].nunique() > 1:
-        r_all = pearson_r_per_assay(preds, labels, assay_ids, min_assay_size=min_assay_size)
+        r_all, _ = pearson_r_per_assay(preds, labels, assay_ids, min_assay_size=min_assay_size)
         print(f"  {'overall':25s}  Pearson r = {float(r_all):.4f}  (n_rows = {len(df):,})")
 
 

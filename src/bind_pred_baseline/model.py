@@ -1,5 +1,7 @@
 """Binding prediction model (Lightning module)."""
 
+import math
+
 import torch
 import torch.nn as nn
 import lightning as L
@@ -112,13 +114,13 @@ class AffinityModel(L.LightningModule):
     def on_validation_epoch_end(self) -> None:
         if not self._val_preds:
             return
-        r = pearson_r_per_assay(
-            torch.cat(self._val_preds),
-            torch.cat(self._val_labels),
+        r, _ = pearson_r_per_assay(
+            torch.cat(self._val_preds).numpy(),
+            torch.cat(self._val_labels).numpy(),
             self._val_assay_ids,
             self.min_assay_size,
         )
-        if not torch.isnan(r):
+        if not math.isnan(r):
             self.log("val_pearson_r", r, prog_bar=True)
         self._val_preds.clear()
         self._val_labels.clear()
@@ -134,13 +136,13 @@ class AffinityModel(L.LightningModule):
     def on_test_epoch_end(self) -> None:
         if not self._test_preds:
             return
-        r = pearson_r_per_assay(
-            torch.cat(self._test_preds),
-            torch.cat(self._test_labels),
+        r, _ = pearson_r_per_assay(
+            torch.cat(self._test_preds).numpy(),
+            torch.cat(self._test_labels).numpy(),
             self._test_assay_ids,
             self.min_assay_size,
         )
-        if not torch.isnan(r):
+        if not math.isnan(r):
             self.log("test_pearson_r", r)
         self._test_preds.clear()
         self._test_labels.clear()
