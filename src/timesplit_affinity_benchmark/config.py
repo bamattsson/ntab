@@ -24,7 +24,9 @@ class AssayFilterConfig:
 @dataclass
 class PipelineConfig:
     tanimoto_threshold: float
-    keep_not_novel_in_test: bool
+    keep_discard_not_novel: bool
+    year_val_start: int = 2022   # doc_year >= this is val; doc_year < this is train
+    year_test_start: int = 2023  # doc_year >= this is test; year_val_start <= doc_year < this is val
     n_jobs: int = 1
     activity_limit: int | None = None
     filter_val_and_test_sets: AssayFilterConfig | None = None
@@ -34,6 +36,7 @@ class PipelineConfig:
 class Config:
     chembl_requester: ChEMBLConfig
     pipeline: PipelineConfig
+    out_dir: str = "out"  # root output directory; intermediate files go to {out_dir}/intermediate/
 
 
 def load_config(path: str | Path) -> Config:
@@ -56,4 +59,6 @@ def load_config(path: str | Path) -> Config:
 
     pipeline = PipelineConfig(**pipeline_raw, filter_val_and_test_sets=filter_config)
 
-    return Config(chembl_requester=chembl, pipeline=pipeline)
+    out_dir: str = raw.get("out_dir", "out")
+
+    return Config(chembl_requester=chembl, pipeline=pipeline, out_dir=out_dir)

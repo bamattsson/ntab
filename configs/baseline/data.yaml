@@ -4,7 +4,7 @@
 paths:
   activities_parquet: out/activities.parquet
   targets_parquet: out/targets.parquet
-  compounds_parquet: intermediate_out/compounds_raw.parquet
+  compounds_parquet: out/intermediate/compounds_raw.parquet
   output_dir: out_baseline/data_preprocessing
 
 # Fingerprint type: "binary" (0/1 bits) or "count" (substructure occurrence counts).

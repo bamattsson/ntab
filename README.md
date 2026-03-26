@@ -6,7 +6,7 @@ Code for generating a time-split, novelty-filtered benchmark for protein-ligand 
 
 The benchmark is constructed from ChEMBL binding affinity data using two complementary strategies to prevent data leakage:
 
-1. **Time split**: activities are partitioned by assay publication year (train: before 2023, val: 2023, test: 2024+).
+1. **Time split**: activities are partitioned by assay publication year (train: before 2022, val: 2022, test: 2023+).
 2. **Novelty filter**: test and validation compounds are filtered by ECFP4 Tanimoto similarity — a compound is kept only if its maximum similarity to any earlier compound is below 0.35.
 
 Val and test assays are further filtered to retain only well-characterised (assay, measurement-type) groups: minimum 10 unique compounds, pChEMBL SD ≥ 0.5, equality-relation measurements only, and at most one assay per publication.
@@ -48,7 +48,7 @@ Add your ChEMBL database credentials to `configs/benchmark.yaml`.
 python -m timesplit_affinity_benchmark.run_pipeline --config configs/benchmark.yaml
 ```
 
-The pipeline runs in 8 steps and writes intermediate files to `intermediate_out/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 20 minutes on a machine with 32 cores and requires ~40 GB of RAM.
+The pipeline runs in 8 steps and writes intermediate files to `out/intermediate/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 45 minutes on a machine with 32 cores and requires ~40 GB of RAM.
 
 ## Output files
 
@@ -70,21 +70,21 @@ One row per activity measurement. Columns:
 | `potential_duplicate` | ChEMBL duplicate flag |
 | `doc_year` | Publication year of the assay document |
 | `cpd_earliest_year` | Earliest publication year for the compound across all ChEMBL records |
-| `max_sim_pre_2024` | Max Tanimoto similarity (ECFP4) to any compound with `cpd_earliest_year < 2024` |
-| `most_sim_cpd_pre_2024` | ChEMBL ID of the most similar pre-2024 compound |
-| `max_sim_pre_2023` | Max Tanimoto similarity (ECFP4) to any compound with `cpd_earliest_year < 2023` |
+| `max_sim_pre_2023` | Max Tanimoto similarity (ECFP4) to any compound with `cpd_earliest_year < 2023` (test novelty cutoff) |
 | `most_sim_cpd_pre_2023` | ChEMBL ID of the most similar pre-2023 compound |
+| `max_sim_pre_2022` | Max Tanimoto similarity (ECFP4) to any compound with `cpd_earliest_year < 2022` (val novelty cutoff) |
+| `most_sim_cpd_pre_2022` | ChEMBL ID of the most similar pre-2022 compound |
 | `canonical_smiles` | Canonical SMILES from ChEMBL `compound_structures` |
 
 #### Split labels
 
 | Label | Condition |
 |---|---|
-| `train` | `doc_year < 2023` |
-| `val_novel` | `doc_year == 2023` and compound is novel vs. pre-2023 compounds |
-| `val_not_novel` | `doc_year == 2023` and compound is not novel vs. pre-2023 compounds |
-| `test` | `doc_year >= 2024` and compound is novel vs. pre-2024 compounds |
-| `2024_not_novel` | `doc_year >= 2024` and compound is not novel (excluded by default) |
+| `train` | `doc_year < 2022` |
+| `val_novel` | `doc_year == 2022` and compound is novel vs. pre-2022 compounds |
+| `val_not_novel` | `doc_year == 2022` and compound is not novel vs. pre-2022 compounds |
+| `test` | `doc_year >= 2023` and compound is novel vs. pre-2023 compounds |
+| `discard_not_novel` | `doc_year >= 2023` and compound is not novel (excluded by default) |
 
 A compound is **novel** if its maximum ECFP4 Tanimoto similarity to all earlier compounds is strictly below `tanimoto_threshold` (default 0.35). Rows with no `doc_year` are excluded from all splits.
 
@@ -92,7 +92,7 @@ A compound is **novel** if its maximum ECFP4 Tanimoto similarity to all earlier 
 
 One row per single-protein target. Columns: `target_chembl_id`, `uniprot_id`, `gene_name`, `target_class`, `target_family`, `organism`, `target_name`, `sequence`.
 
-### `intermediate_out/`
+### `out/intermediate/`
 
 Intermediate files written between steps for inspection and debugging:
 
@@ -123,7 +123,7 @@ The following filters are applied when querying ChEMBL:
 After ChEMBL retrieval, three further filters determine which rows appear in the final output:
 
 - **No `doc_year`**: rows with a missing publication year cannot be assigned to a split and are excluded.
-- **Novelty (test/val only)**: by default, test-year compounds that are not novel vs. pre-2024 compounds (`2024_not_novel`) are excluded. This can be changed via `keep_not_novel_in_test` in the config.
+- **Novelty (test/val only)**: by default, test-year compounds that are not novel vs. pre-2023 compounds (`discard_not_novel`) are excluded. This can be changed via `keep_discard_not_novel` in the config.
 - **Assay quality (test/val only)**: (assay, measurement-type) groups are removed if they have fewer than 10 unique compounds, a pChEMBL SD below 0.5, non-equality relations, or share a publication with another passing assay. Configurable via `filter_val_and_test_sets` in the config.
 
 ## Running tests

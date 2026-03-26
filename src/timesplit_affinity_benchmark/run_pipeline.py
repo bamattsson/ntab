@@ -19,18 +19,16 @@ from timesplit_affinity_benchmark.mol_fingerprints import compute_ecfp4_fingerpr
 from timesplit_affinity_benchmark.novelty import compute_novelty_for_cutoff
 from timesplit_affinity_benchmark.split_assigner import assign_splits
 
-INTERMEDIATE_DIR = Path("intermediate_out")
-OUT_DIR = Path("out")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate the timesplit affinity benchmark.")
     parser.add_argument("--config", required=True, help="Path to config.yaml")
     args = parser.parse_args()
 
     config = load_config(args.config)
-    INTERMEDIATE_DIR.mkdir(exist_ok=True)
-    OUT_DIR.mkdir(exist_ok=True)
+    out_dir = Path(config.out_dir)
+    intermediate_dir = out_dir / "intermediate"
+    out_dir.mkdir(exist_ok=True)
+    intermediate_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
     # STEP 1: ChEMBL queries
@@ -59,10 +57,10 @@ def main() -> None:
     print(f"  Compounds (filtered to activities): {compounds_df.shape}")
     print(f"  Targets: {targets_df.shape}")
 
-    activities_df.to_parquet(INTERMEDIATE_DIR / "activities_raw.parquet", index=False)
-    compounds_df.to_parquet(INTERMEDIATE_DIR / "compounds_raw.parquet", index=False)
-    targets_df.to_parquet(INTERMEDIATE_DIR / "targets_raw.parquet", index=False)
-    assay_docs_df.to_parquet(INTERMEDIATE_DIR / "assay_docs.parquet", index=False)
+    activities_df.to_parquet(intermediate_dir / "activities_raw.parquet", index=False)
+    compounds_df.to_parquet(intermediate_dir / "compounds_raw.parquet", index=False)
+    targets_df.to_parquet(intermediate_dir / "targets_raw.parquet", index=False)
+    assay_docs_df.to_parquet(intermediate_dir / "assay_docs.parquet", index=False)
     print("  Saved activities_raw.parquet, compounds_raw.parquet, targets_raw.parquet, assay_docs.parquet.")
 
     # ------------------------------------------------------------------
@@ -76,7 +74,7 @@ def main() -> None:
     )
     skipped = len(compounds_df) - len(fp_names)
     print(f"  Fingerprints: {fp_matrix.shape} ({skipped} molecules skipped due to parse failure)")
-    np.savez_compressed(INTERMEDIATE_DIR / "fingerprints.npz", names=fp_names, fps=fp_matrix)
+    np.savez_compressed(intermediate_dir / "fingerprints.npz", names=fp_names, fps=fp_matrix)
     print("  Saved fingerprints.npz.")
 
     fp_index = {name: i for i, name in enumerate(fp_names)}
@@ -86,32 +84,35 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("Step 3: Computing novelty...")
 
-    novelty_2024 = compute_novelty_for_cutoff(
-        compounds_df=compounds_df,
-        cutoff_year=2024,
-        fp_index=fp_index,
-        fp_matrix=fp_matrix,
-        threshold=config.pipeline.tanimoto_threshold,
-        n_jobs=config.pipeline.n_jobs,
-    )
-    novel_2024 = novelty_2024["is_novel_2024"]
-    print(f"  2024 cutoff — novel: {(novel_2024 == True).sum()}, not novel: {(novel_2024 == False).sum()}, reference: {novel_2024.isna().sum()}")
+    year_test = config.pipeline.year_test_start
+    year_val = config.pipeline.year_val_start
 
-    novelty_2023 = compute_novelty_for_cutoff(
+    novelty_test = compute_novelty_for_cutoff(
         compounds_df=compounds_df,
-        cutoff_year=2023,
+        cutoff_year=year_test,
         fp_index=fp_index,
         fp_matrix=fp_matrix,
         threshold=config.pipeline.tanimoto_threshold,
         n_jobs=config.pipeline.n_jobs,
     )
-    novel_2023 = novelty_2023["is_novel_2023"]
-    print(f"  2023 cutoff — novel: {(novel_2023 == True).sum()}, not novel: {(novel_2023 == False).sum()}, reference: {novel_2023.isna().sum()}")
+    novel_test = novelty_test[f"is_novel_{year_test}"]
+    print(f"  {year_test} cutoff (test) — novel: {(novel_test == True).sum()}, not novel: {(novel_test == False).sum()}, reference: {novel_test.isna().sum()}")
+
+    novelty_val = compute_novelty_for_cutoff(
+        compounds_df=compounds_df,
+        cutoff_year=year_val,
+        fp_index=fp_index,
+        fp_matrix=fp_matrix,
+        threshold=config.pipeline.tanimoto_threshold,
+        n_jobs=config.pipeline.n_jobs,
+    )
+    novel_val = novelty_val[f"is_novel_{year_val}"]
+    print(f"  {year_val} cutoff (val) — novel: {(novel_val == True).sum()}, not novel: {(novel_val == False).sum()}, reference: {novel_val.isna().sum()}")
 
     # Add 6 novelty columns to compounds_df and save as intermediate
     compounds_df = compounds_df.set_index("chembl_id")
-    compounds_df = compounds_df.join(novelty_2024).join(novelty_2023)
-    compounds_df.to_parquet(INTERMEDIATE_DIR / "compounds_with_novelty.parquet")
+    compounds_df = compounds_df.join(novelty_test).join(novelty_val)
+    compounds_df.to_parquet(intermediate_dir / "compounds_with_novelty.parquet")
     print("  Saved compounds_with_novelty.parquet.")
 
     # ------------------------------------------------------------------
@@ -127,11 +128,15 @@ def main() -> None:
     # STEP 5: Assign splits
     # ------------------------------------------------------------------
     print("Step 5: Assigning splits...")
-    activities_df = assign_splits(activities_df, compounds_df)
+    activities_df = assign_splits(
+        activities_df, compounds_df,
+        year_val_start=year_val,
+        year_test_start=year_test,
+    )
     print("  Split value counts (including NaN):")
     print(activities_df["split"].value_counts(dropna=False).to_string())
 
-    activities_df.to_parquet(INTERMEDIATE_DIR / "split_assignments.parquet", index=False)
+    activities_df.to_parquet(intermediate_dir / "split_assignments.parquet", index=False)
     print("  Saved split_assignments.parquet.")
 
     # ------------------------------------------------------------------
@@ -161,9 +166,11 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("Step 7: Building final activity file...")
 
-    sim_cols = compounds_df[["cpd_earliest_year", "canonical_smiles", "mw_freebase",
-                              "max_sim_pre_2024", "most_sim_cpd_pre_2024",
-                              "max_sim_pre_2023", "most_sim_cpd_pre_2023"]]
+    sim_cols = compounds_df[[
+        "cpd_earliest_year", "canonical_smiles", "mw_freebase",
+        f"max_sim_pre_{year_test}", f"most_sim_cpd_pre_{year_test}",
+        f"max_sim_pre_{year_val}", f"most_sim_cpd_pre_{year_val}",
+    ]]
     activities_df = activities_df.merge(
         sim_cols,
         left_on="ligand_chembl_id",
@@ -172,28 +179,28 @@ def main() -> None:
     )
 
     activities_df = activities_df[activities_df["split"].notna()]
-    if not config.pipeline.keep_not_novel_in_test:
-        activities_df = activities_df[activities_df["split"] != "2024_not_novel"]
+    if not config.pipeline.keep_discard_not_novel:
+        activities_df = activities_df[activities_df["split"] != "discard_not_novel"]
 
     final_col_order = [
         "target_chembl_id", "assay_chembl_id", "ligand_chembl_id",
         "standard_type", "pchembl_relation", "pchembl_value_filled",
         "split", "mw_freebase", "data_validity_comment", "potential_duplicate",
         "doc_year", "cpd_earliest_year",
-        "max_sim_pre_2024", "most_sim_cpd_pre_2024",
-        "max_sim_pre_2023", "most_sim_cpd_pre_2023",
+        f"max_sim_pre_{year_test}", f"most_sim_cpd_pre_{year_test}",
+        f"max_sim_pre_{year_val}", f"most_sim_cpd_pre_{year_val}",
         "canonical_smiles",
     ]
     activities_df = activities_df[final_col_order]
 
-    activities_df.to_parquet(OUT_DIR / "activities.parquet", index=False)
+    activities_df.to_parquet(out_dir / "activities.parquet", index=False)
     print(f"  Saved activities.parquet: {activities_df.shape}")
 
     # ------------------------------------------------------------------
     # STEP 8: Save target file
     # ------------------------------------------------------------------
     print("Step 8: Saving target file...")
-    targets_df.to_parquet(OUT_DIR / "targets.parquet", index=False)
+    targets_df.to_parquet(out_dir / "targets.parquet", index=False)
     print(f"  Saved targets.parquet: {targets_df.shape}")
 
     print("\nFinal split distribution:")

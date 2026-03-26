@@ -505,14 +505,14 @@ class TestPrintMetrics:
         df = pd.DataFrame({
             "assay_id": [f"ASSAY{i % 3}" for i in range(n)],
             "standard_type": ["IC50"] * n,
-            "split": ["test"] * 15 + ["2024_not_novel"] * 15,
+            "split": ["test"] * 15 + ["discard_not_novel"] * 15,
             "pchembl_value": rng.uniform(4, 9, n).astype(np.float32),
             "pred_pchembl": rng.uniform(4, 9, n).astype(np.float32),
         })
         _print_metrics(df)
         out = capsys.readouterr().out
         assert "test" in out
-        assert "2024_not_novel" in out
+        assert "discard_not_novel" in out
 
     def test_prints_overall_when_multiple_splits(self, capsys) -> None:
         from bind_pred_baseline.predict_on_benchmark import _print_metrics
@@ -522,7 +522,7 @@ class TestPrintMetrics:
         df = pd.DataFrame({
             "assay_id": [f"ASSAY{i % 3}" for i in range(n)],
             "standard_type": ["IC50"] * n,
-            "split": ["test"] * 15 + ["2024_not_novel"] * 15,
+            "split": ["test"] * 15 + ["discard_not_novel"] * 15,
             "pchembl_value": rng.uniform(4, 9, n).astype(np.float32),
             "pred_pchembl": rng.uniform(4, 9, n).astype(np.float32),
         })
@@ -574,7 +574,7 @@ class TestEvaluateSplits:
         ckpt_path = tmp_path / "model.ckpt"
         _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
         acts_path = tmp_path / "activities.parquet"
-        _make_activities_parquet(acts_path, splits=["test", "2024_not_novel"], n_targets=n_targets)
+        _make_activities_parquet(acts_path, splits=["test", "discard_not_novel"], n_targets=n_targets)
         targets_path = tmp_path / "targets.parquet"
         _make_targets_parquet(targets_path, n_targets=n_targets)
         return data_dir, ckpt_path, acts_path, targets_path
@@ -634,9 +634,9 @@ class TestEvaluateSplits:
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test", "2024_not_novel"], output_csv=out_csv)
+        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test", "discard_not_novel"], output_csv=out_csv)
         df = pd.read_csv(out_csv)
-        assert set(df["split"].unique()) == {"test", "2024_not_novel"}
+        assert set(df["split"].unique()) == {"test", "discard_not_novel"}
 
     def test_pred_pchembl_is_numeric_and_not_null(self, tmp_path: Path) -> None:
         from bind_pred_baseline.predict_on_benchmark import evaluate_splits

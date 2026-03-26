@@ -11,7 +11,7 @@ Usage
         --data-dir out_baseline/data_preprocessing \\
         --activities out/activities.parquet \\
         --targets out/targets.parquet \\
-        --splits test 2024_not_novel \\
+        --splits test discard_not_novel \\
         --output predictions.csv
 """
 
@@ -54,7 +54,7 @@ def load_activities_as_standard_df(
         activities_path: Path to activities.parquet.
         targets_path: Path to targets.parquet (used to join target_chembl_id
             to uniprot_id).
-        splits: Split names to include (e.g. ["test", "2024_not_novel"]).
+        splits: Split names to include (e.g. ["test", "discard_not_novel"]).
 
     Returns:
         Standard input DataFrame with columns: assay_id, ligand_name, smiles,
@@ -235,7 +235,7 @@ def evaluate_splits(
         activities_path: Path to activities.parquet.
         targets_path: Path to targets.parquet (used to join target_chembl_id to
             uniprot_id).
-        splits: Split labels to evaluate (e.g. ["test", "2024_not_novel"]).
+        splits: Split labels to evaluate (e.g. ["test", "discard_not_novel"]).
         output_csv: Destination path for the predictions CSV.
         batch_size: Inference batch size.
         n_bootstrap: If given, compute bootstrapped SE for each Pearson r metric.

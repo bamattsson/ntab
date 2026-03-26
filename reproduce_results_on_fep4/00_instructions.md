@@ -41,8 +41,8 @@ Replace `version_X` and `<best>` with your values and run:
 
 ```bash
 python -m bind_pred_baseline.predict_on_csv \
-    --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
-    --data-dir out_baseline/data_preprocessing_FEP4_split \
+    --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
+    --data-dir out_FEP4_baseline/data_preprocessing \
     --input-csv ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv \
     --output-csv predictions.csv \
     --n-bootstraps 1000
@@ -50,4 +50,4 @@ python -m bind_pred_baseline.predict_on_csv \
 
 ---
 
-On commit `5048fdc23` with a nvidia GPU we get the results 0.663, but the results can vary up or down a few 0.01 depending on random seeds.
+On commit `[TODO: rerun and update this once we are close to publication]` with a nvidia GPU we get the results 0.663, but the results can vary up or down a few 0.01 depending on random seeds.
