@@ -148,15 +148,6 @@ class AffinityModel(L.LightningModule):
         self._test_labels.clear()
         self._test_assay_ids.clear()
 
-    def predict_step(self, batch: tuple, batch_idx: int) -> dict:
-        fps, mol_props, target_idx, standard_type_idx, names, uniprot_ids = batch
-        preds = self(fps, mol_props, target_idx, standard_type_idx).squeeze(1)
-        return {
-            "ligand_name": list(names),
-            "uniprot_id": list(uniprot_ids),
-            "pred_pchembl": preds.detach().cpu(),
-        }
-
     def configure_optimizers(self):
         decay, no_decay = [], []
         for name, param in self.named_parameters():

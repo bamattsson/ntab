@@ -14,7 +14,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from bind_pred_baseline.constants import MOL_PROP_FEATURES
-from bind_pred_baseline.dataset import AffinityDataset, PredictDataset
+from bind_pred_baseline.dataset import AffinityDataset
 from bind_pred_baseline.model import AffinityModel
 
 
@@ -29,8 +29,6 @@ class AffinityDataModule(L.LightningDataModule):
             fingerprints_ecfp4.npz, and meta.json (written by preprocess_training_data.py).
         batch_size: Training and evaluation batch size.
         num_workers: DataLoader worker processes.
-        prediction_input_csv: Path to input CSV for prediction mode (columns: ligand_name, uniprot_id, smiles).
-        prediction_standard_type: Assay type for prediction mode ("IC50", "Ki", or "Kd").
     """
 
     def __init__(
@@ -38,15 +36,11 @@ class AffinityDataModule(L.LightningDataModule):
         data_dir: str,
         batch_size: int = 256,
         num_workers: int = 4,
-        predict_input_csv: str | None = None,
-        predict_standard_type: str = "IC50",
     ) -> None:
         super().__init__()
         self.data_dir = Path(data_dir)
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.predict_input_csv = predict_input_csv
-        self.predict_standard_type = predict_standard_type
 
         meta = json.loads((self.data_dir / "meta.json").read_text())
         self.n_targets: int = meta["n_targets"]
@@ -66,27 +60,6 @@ class AffinityDataModule(L.LightningDataModule):
         )
 
     def setup(self, stage: str | None = None) -> None:
-        if stage == "predict":
-            from bind_pred_baseline.preprocess_pred_data import preprocess_data_for_prediction
-            fp_mat, props_mat, fp_indices, target_indices, std_type_indices, names, uniprot_ids = \
-                preprocess_data_for_prediction(
-                    input_csv=Path(self.predict_input_csv),
-                    data_dir=self.data_dir,
-                    standard_type=self.predict_standard_type,
-                )
-            fps_matrix = torch.from_numpy(fp_mat)
-            mol_props_matrix = torch.from_numpy(props_mat)
-            self._predict_ds = PredictDataset(
-                fps_matrix=fps_matrix,
-                props_matrix=mol_props_matrix,
-                fp_indices=fp_indices,
-                target_indices=target_indices,
-                standard_type_indices=std_type_indices,
-                names=names,
-                uniprot_ids=uniprot_ids,
-            )
-            return
-
         print("Loading fingerprints matrix...")
         fps_np = np.load(self.data_dir / "fingerprints_ecfp4.npz")["fps"].astype(np.float32)
         fps_matrix = torch.from_numpy(fps_np)
@@ -118,12 +91,6 @@ class AffinityDataModule(L.LightningDataModule):
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
             self._test_ds, batch_size=self.batch_size,
-            shuffle=False, num_workers=self.num_workers, pin_memory=True,
-        )
-
-    def predict_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self._predict_ds, batch_size=self.batch_size,
             shuffle=False, num_workers=self.num_workers, pin_memory=True,
         )
 

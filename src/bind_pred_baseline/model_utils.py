@@ -3,16 +3,12 @@
 Contains:
 - pearson_r_per_assay: the benchmark metric.
 - MetricsPlotCallback: saves metrics_epoch.csv and metrics_plot.png after training.
-- PredictWriterCallback: writes model predictions to a CSV file.
 """
 
 import math
 
 import numpy as np
-import pandas as pd
-import torch
 import lightning as L
-from lightning.pytorch.callbacks import BasePredictionWriter
 from scipy.stats import pearsonr
 
 from bind_pred_baseline.constants import MIN_ASSAY_SIZE
@@ -134,37 +130,3 @@ class MetricsPlotCallback(L.Callback):
             traceback.print_exc()
 
 
-class PredictWriterCallback(BasePredictionWriter):
-    """Writes model predictions to a CSV file at the end of prediction.
-
-    Args:
-        output_csv: Path to the output CSV file.
-    """
-
-    def __init__(self, output_csv: str) -> None:
-        super().__init__(write_interval="epoch")
-        self.output_csv = output_csv
-
-    def write_on_batch_end(self, trainer, pl_module, prediction, batch_indices, batch, batch_idx, dataloader_idx) -> None:
-        pass
-
-    def write_on_epoch_end(self, trainer, pl_module, predictions, batch_indices) -> None:
-        """Flatten all batches and write to CSV.
-
-        Args:
-            predictions: list[dict] — one dict per batch, as returned by predict_step.
-        """
-        rows = []
-        for batch_dict in predictions:
-            names = batch_dict["ligand_name"]
-            uniprot_ids = batch_dict["uniprot_id"]
-            pred_pchembl = batch_dict["pred_pchembl"]
-            for name, uid, pred in zip(names, uniprot_ids, pred_pchembl):
-                rows.append({
-                    "ligand_name": name,
-                    "uniprot_id": uid,
-                    "pred_pchembl": float(pred),
-                })
-        df = pd.DataFrame(rows, columns=["ligand_name", "uniprot_id", "pred_pchembl"])
-        df.to_csv(self.output_csv, index=False)
-        print(f"Predictions saved to {self.output_csv}")

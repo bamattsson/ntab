@@ -40,21 +40,13 @@ python -m bind_pred_baseline.train fit \
 Replace `version_X` and `<best>` with your values and run:
 
 ```bash
-python -m bind_pred_baseline.train predict \
-  --config out_baseline/lightning_logs/version_X/config.yaml \
-  --ckpt_path out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
-  --config reproduce_results_on_fep4/04_predict.yaml
+python -m bind_pred_baseline.predict_on_csv \
+    --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
+    --data-dir out_baseline/data_preprocessing_FEP4_split \
+    --input-csv ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv \
+    --output-csv predictions.csv \
+    --n-bootstraps 1000
 ```
-
-**Step 5 — Evaluate Pearson r:**
-
-```bash
-python reproduce_results_on_fep4/eval_fep_benchmark.py \
-  --predictions predictions.csv \
-  --benchmark ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv
-```
-
-Per-assay Pearson r and the overall size-weighted mean are printed to stdout.
 
 ---
 

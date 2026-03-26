@@ -69,27 +69,37 @@ python -m bind_pred_baseline.train fit --config configs/baseline/train.yaml
 The best checkpoint (by `val_pearson_r`) is saved under
 `out/lightning_logs/version_X/checkpoints/`.
 
-### Step 3 — Evaluate on test set
+### Step 3 — Evaluate on benchmark splits
+
+Run inference on one or more held-out splits from `activities.parquet` and
+write per-row predictions to a CSV:
 
 ```bash
-python -m bind_pred_baseline.train test \
-  --config out_baseline/lightning_logs/version_X/config.yaml \
-  --ckpt_path out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt
+python -m bind_pred_baseline.predict_on_benchmark \
+    --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
+    --data-dir out_baseline/data_preprocessing \
+    --activities out/activities.parquet \
+    --targets out/targets.parquet \
+    --splits test \
+    --output predictions.csv
 ```
+
+Prints size-weighted Pearson r per split (and overall when multiple splits are
+requested). The output CSV has columns: `assay_id`, `ligand_name`,
+`uniprot_id`, `standard_type`, `split`, `pchembl_value`, `pred_pchembl`.
 
 ### Step 4 — Predict on new compounds
 
-Edit `configs/baseline/predict.yaml` to set `predict_input_csv` (CSV with
-columns `ligand_name`, `uniprot_id`, `smiles`), then run:
+Provide a CSV with columns `ligand_name`, `uniprot_id`, `smiles` (and
+optionally `standard_type` and `pchembl_value`):
 
 ```bash
-python -m bind_pred_baseline.train predict \
-  --config out_baseline/lightning_logs/version_X/config.yaml \
-  --ckpt_path out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
-  --config configs/baseline/predict.yaml
+python -m bind_pred_baseline.predict_on_csv \
+    --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
+    --data-dir out_baseline/data_preprocessing \
+    --input-csv compounds.csv \
+    --output-csv predictions.csv
 ```
-
-Predictions are written to `predictions.csv`.
 
 ---
 
