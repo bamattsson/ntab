@@ -54,6 +54,12 @@ def main() -> None:
     relevant_ids = set(activities_df["ligand_chembl_id"].dropna())
     compounds_df = compounds_df[compounds_df["chembl_id"].isin(relevant_ids)].reset_index(drop=True)
 
+    # Derive cpd_earliest_year from the activities themselves (via activities → assays → docs).
+    # Using compound_records as the source would give a later year for ~0.27% of compounds,
+    # causing those compounds to be misclassified as novel and appear in both train and test.
+    cpd_earliest_year = activities_df.groupby("ligand_chembl_id")["doc_year"].min()
+    compounds_df["cpd_earliest_year"] = compounds_df["chembl_id"].map(cpd_earliest_year)
+
     print(f"  Compounds (filtered to activities): {compounds_df.shape}")
     print(f"  Targets: {targets_df.shape}")
 

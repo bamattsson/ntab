@@ -14,5 +14,5 @@ def fixtures_dir() -> Path:
 
 @pytest.fixture
 def chembl_smiles_sample() -> pd.DataFrame:
-    """100-row sample from ChEMBL with columns: chembl_id, canonical_smiles, cpd_earliest_year."""
+    """100-row sample from ChEMBL with columns: chembl_id, canonical_smiles."""
     return pd.read_csv(FIXTURES_DIR / "chembl_smiles_sample.csv")

@@ -19,8 +19,9 @@ def assign_splits(
 
     Novelty is read from compounds_df columns named ``is_novel_{year_val_start}``
     and ``is_novel_{year_test_start}``, as produced by
-    ``compute_novelty_for_cutoff``.  Reference-set compounds (cpd_earliest_year <
-    cutoff) have NaN for their novelty columns and are treated as not novel.
+    ``compute_novelty_for_cutoff``.  Reference-set compounds (cpd_earliest_year
+    < cutoff, where cpd_earliest_year is derived from the activities' doc_year)
+    have NaN for their novelty columns and are treated as not novel.
 
     Args:
         activities_df: Activity data with at least columns:
