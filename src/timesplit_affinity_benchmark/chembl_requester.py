@@ -17,19 +17,29 @@ class ChEMBLRequester:
         self.dbname = dbname
 
     def get_chembl_id_to_smiles(self) -> list[dict[str, str | int | None]]:
-        """Return all molecules with SMILES and MW.
+        """Return all molecules with SMILES, MW, and earliest activity year.
 
-        mw_freebase is the molecular weight of the parent compound (salt/counterion stripped),
-        from compound_properties. None if not available.
+        cpd_earliest_year is MIN(d.year) across all activities for the compound,
+        via the activities → assays → docs path. This is the strictest possible
+        definition: a compound is considered to have appeared in year Y if any
+        activity measurement exists in a document from year Y, regardless of assay
+        type or quality filters. None if the compound has no activity records.
+
+        mw_freebase is the molecular weight of the parent compound (salt/counterion
+        stripped), from compound_properties. None if not available.
         """
         query = """
-        SELECT md.chembl_id, cs.canonical_smiles, cp.mw_freebase
+        SELECT md.chembl_id, cs.canonical_smiles, MIN(d.year) AS cpd_earliest_year,
+               cp.mw_freebase
         FROM molecule_dictionary md
         JOIN compound_structures cs ON md.molregno = cs.molregno
         LEFT JOIN compound_properties cp ON md.molregno = cp.molregno
+        LEFT JOIN activities act ON act.molregno = md.molregno
+        LEFT JOIN assays a ON a.assay_id = act.assay_id
+        LEFT JOIN docs d ON d.doc_id = a.doc_id
         GROUP BY md.chembl_id, cs.canonical_smiles, cp.mw_freebase
         """
-        col_order = ["chembl_id", "canonical_smiles", "mw_freebase"]
+        col_order = ["chembl_id", "canonical_smiles", "cpd_earliest_year", "mw_freebase"]
         self.cur.execute(query)
         rows = self.cur.fetchall()
         return [{k: v for k, v in zip(col_order, row)} for row in rows]
