@@ -7,11 +7,11 @@ Code for generating a time-split, novelty-filtered benchmark for protein-ligand 
 The benchmark is constructed from ChEMBL binding affinity data using two complementary strategies to prevent data leakage:
 
 1. **Time split**: activities are partitioned by assay publication year (train: before 2022, val: 2022, test: 2023+).
-2. **Novelty filter**: test and validation compounds are filtered by ECFP4 Tanimoto similarity — a compound is kept only if its maximum similarity to any earlier compound is below 0.35.
+2. **Novelty filter**: test compounds are filtered by Tanimoto similarity (ECFP4 2048 fingerprints) — a compound is kept only if its maximum similarity to any earlier compound is below 0.35.
 
 Val and test assays are further filtered to retain only well-characterised (assay, measurement-type) groups: minimum 10 unique compounds, pChEMBL SD ≥ 0.5, equality-relation measurements only, and at most one assay per publication.
 
-The repo also contains code for a ligand-only baseline ML model, for more information on how to use this read [docs/baseline.md](docs/baseline.md).
+The repo also contains code for a ligand-only baseline ML model, which can be used as a probe for what performance is possible to get with pure memorisation, for more information on how to use this read [docs/baseline.md](docs/baseline.md).
 
 ## Installation
 
@@ -48,7 +48,7 @@ Add your ChEMBL database credentials to `configs/benchmark.yaml`.
 python -m timesplit_affinity_benchmark.run_pipeline --config configs/benchmark.yaml
 ```
 
-The pipeline runs in 8 steps and writes intermediate files to `out/intermediate/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 45 minutes on a machine with 32 cores and requires ~40 GB of RAM.
+The pipeline runs in 8 steps and writes intermediate files to `out/intermediate/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 45 minutes on a machine with 16 cores and requires ~40 GB of RAM.
 
 ## Output files
 
@@ -63,7 +63,7 @@ One row per activity measurement. Columns:
 | `ligand_chembl_id` | ChEMBL compound ID |
 | `standard_type` | Measurement type: `Ki`, `Kd`, or `IC50` |
 | `pchembl_relation` | Inequality relation on the pChEMBL scale (e.g. `<`, `=`). Inverted from `standard_relation` because −log10 reverses inequality direction. |
-| `pchembl_value_filled` | pChEMBL value (−log10 scale). Uses ChEMBL's `pchembl_value` where available; otherwise computed as −log10(`standard_value` × 10⁻⁹) for nM measurements. |
+| `pchembl_value_filled` | pChEMBL value (−log10 scale). Uses ChEMBL's `pchembl_value` where available; otherwise computed. |
 | `split` | Split label (see below) |
 | `mw_freebase` | Molecular weight of the parent compound (salt-stripped), from ChEMBL `compound_properties` |
 | `data_validity_comment` | ChEMBL data validity flag (`NULL` or `Manually validated`) |
@@ -86,7 +86,7 @@ One row per activity measurement. Columns:
 | `test` | `doc_year >= 2023` and compound is novel vs. pre-2023 compounds |
 | `discard_not_novel` | `doc_year >= 2023` and compound is not novel (excluded by default) |
 
-A compound is **novel** if its maximum ECFP4 Tanimoto similarity to all earlier compounds is strictly below `tanimoto_threshold` (default 0.35). Rows with no `doc_year` are excluded from all splits.
+A compound is **novel** if its maximum ECFP4 Tanimoto similarity (ECFP4 2048 fingerprint) to all earlier compounds is strictly below `tanimoto_threshold` (default 0.35). Rows with no `doc_year` are excluded from all splits.
 
 ### `out/targets.parquet`
 
