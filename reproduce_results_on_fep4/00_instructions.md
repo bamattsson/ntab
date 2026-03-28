@@ -50,4 +50,4 @@ python -m bind_pred_baseline.predict_on_csv \
 
 ---
 
-On commit `[TODO: rerun and update this once we are close to publication]` with a nvidia GPU we get the results 0.663, but the results can vary up or down a few 0.01 depending on random seeds.
+On commit `52f3381` with a nvidia GPU we get the results 0.663, but the results can vary up or down a few 0.01 depending on random seeds.
