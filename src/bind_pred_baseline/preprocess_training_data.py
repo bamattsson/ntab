@@ -3,7 +3,6 @@
 Input (paths specified in config):
   - activities.parquet   (activity rows with pchembl values)
   - targets.parquet      (target metadata including uniprot_id and sequence)
-  - compounds.parquet    (compound structures with canonical SMILES)
 
 Output (written to paths.output_dir):
   - fingerprints_ecfp4.npz  (ECFP4 fingerprints for all compounds)
@@ -55,7 +54,6 @@ def main() -> None:
 
     activities_path = Path(cfg["paths"]["activities_parquet"])
     targets_path = Path(cfg["paths"]["targets_parquet"])
-    compounds_path = Path(cfg["paths"]["compounds_parquet"])
     out_dir = Path(cfg["paths"]["output_dir"])
     val_splits = cfg.get("val_splits", ["val_novel", "val_not_novel"])
     n_jobs: int = cfg.get("n_jobs", 1)
@@ -97,8 +95,13 @@ def main() -> None:
     # Generate fingerprints from compounds
     # ------------------------------------------------------------------
     fp_npz_path = out_dir / "fingerprints_ecfp4.npz"
-    print(f"\nGenerating {fp_type} ECFP4 fingerprints from {compounds_path}...")
-    compounds_df = pd.read_parquet(compounds_path)[["chembl_id", "canonical_smiles"]]
+    print(f"\nGenerating {fp_type} ECFP4 fingerprints...")
+    compounds_df = (
+        df[["ligand_chembl_id", "canonical_smiles"]]
+        .drop_duplicates(subset="ligand_chembl_id")
+        .rename(columns={"ligand_chembl_id": "chembl_id"})
+        .reset_index(drop=True)
+    )
     fp_names, fp_matrix = compute_fingerprints(
         mol_names=compounds_df["chembl_id"].tolist(),
         smiles=compounds_df["canonical_smiles"].tolist(),

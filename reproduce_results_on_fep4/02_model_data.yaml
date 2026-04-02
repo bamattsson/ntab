@@ -4,7 +4,6 @@
 paths:
   activities_parquet: ../timesplit-affinity-benchmark/out_FEP4/activities.parquet
   targets_parquet: ../timesplit-affinity-benchmark/out_FEP4/targets.parquet
-  compounds_parquet: ../timesplit-affinity-benchmark/out_FEP4/intermediate/compounds_raw.parquet
   output_dir: out_FEP4_baseline/data_preprocessing
 fp_type: count
 # This should contain the FEP+ 4 data split as uniprot_id -> train/val/test

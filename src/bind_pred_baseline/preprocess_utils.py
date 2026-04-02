@@ -37,6 +37,9 @@ def _process_one(
     """
     name, smi, fp_type, radius, fp_size = args
     fpgen = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=fp_size)
+    if smi is None:
+        print(f"WARNING: null SMILES, skipping. name={name}")
+        return None
     mol = Chem.MolFromSmiles(smi, sanitize=True)
     if mol is None:
         print(f"WARNING: could not parse SMILES, skipping. name={name}, smiles={smi}")
@@ -128,6 +131,9 @@ def _compute_one(args: tuple[str, str]) -> tuple[str, np.ndarray] | None:
     Module-level so it can be pickled for multiprocessing.
     """
     name, smi = args
+    if smi is None:
+        print(f"WARNING: null SMILES, skipping. name={name}")
+        return None
     mol = Chem.MolFromSmiles(smi, sanitize=True)
     if mol is None:
         print(f"WARNING: could not parse SMILES, skipping. name={name}, smiles={smi}")
