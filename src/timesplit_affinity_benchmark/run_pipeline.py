@@ -134,6 +134,13 @@ def main() -> None:
     n_filled = activities_df["pchembl_value_filled"].notna().sum()
     print(f"  pchembl_value_filled: {n_filled} non-null (vs {n_original} in original pchembl_value)")
 
+    # Drop rows with no pchembl value or no relation (e.g. missing data or non-convertible units)
+    mask_no_value = activities_df["pchembl_value_filled"].isna() | activities_df["pchembl_relation"].isna()
+    n_dropped = mask_no_value.sum()
+    if n_dropped:
+        activities_df = activities_df[~mask_no_value].reset_index(drop=True)
+        print(f"  Dropped {n_dropped} rows with null pchembl_value_filled or null pchembl_relation")
+
     # ------------------------------------------------------------------
     # STEP 5: Assign splits
     # ------------------------------------------------------------------
