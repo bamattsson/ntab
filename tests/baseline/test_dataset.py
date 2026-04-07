@@ -34,13 +34,20 @@ def _make_dataset(n: int = 4, n_unique: int = 3) -> AffinityDataset:
     labels = rng.random(n).astype(np.float32) * 5 + 4
     assay_ids = [f"ASSAY_{i % 2}" for i in range(n)]
     return AffinityDataset(
-        fps_matrix, props_matrix, fp_indices, target_indices, standard_type_indices, labels, assay_ids
+        fps_matrix,
+        props_matrix,
+        fp_indices,
+        target_indices,
+        standard_type_indices,
+        labels,
+        assay_ids,
     )
 
 
 # ---------------------------------------------------------------------------
 # AffinityDataset
 # ---------------------------------------------------------------------------
+
 
 class TestAffinityDataset:
     def test_len_matches_number_of_samples(self) -> None:
@@ -81,7 +88,15 @@ class TestAffinityDataset:
         fps_matrix = torch.zeros(1, 2048)
         props_matrix = torch.zeros(1, N_PROPS)
         labels = np.array([6.0, 7.0, 8.0], dtype=np.float32)
-        ds = AffinityDataset(fps_matrix, props_matrix, [0, 0, 0], [0, 1, 2], [0, 1, 2], labels, ["A", "B", "C"])
+        ds = AffinityDataset(
+            fps_matrix,
+            props_matrix,
+            [0, 0, 0],
+            [0, 1, 2],
+            [0, 1, 2],
+            labels,
+            ["A", "B", "C"],
+        )
         _, _, _, std_type_idx, _, _ = ds[1]
         assert std_type_idx.item() == 1
 
@@ -99,23 +114,33 @@ class TestAffinityDataset:
 
     def test_fp_indices_look_up_correct_row_from_shared_matrix(self) -> None:
         fps_matrix = torch.zeros(2, 2048)
-        fps_matrix[0, 0] = 1.0    # row 0 marker
+        fps_matrix[0, 0] = 1.0  # row 0 marker
         fps_matrix[1, 100] = 1.0  # row 1 marker
         props_matrix = torch.zeros(2, N_PROPS)
         fp_indices = [1, 0]
         labels = np.array([6.0, 7.0], dtype=np.float32)
-        ds = AffinityDataset(fps_matrix, props_matrix, fp_indices, [0, 1], [0, 0], labels, ["A", "B"])
+        ds = AffinityDataset(
+            fps_matrix, props_matrix, fp_indices, [0, 1], [0, 0], labels, ["A", "B"]
+        )
 
         fp0, _, _, _, _, _ = ds[0]
         fp1, _, _, _, _, _ = ds[1]
-        assert fp0[100].item() == 1.0   # from row 1
-        assert fp1[0].item() == 1.0     # from row 0
+        assert fp0[100].item() == 1.0  # from row 1
+        assert fp1[0].item() == 1.0  # from row 0
 
     def test_values_match_input_at_index(self) -> None:
         fps_matrix = torch.zeros(1, 2048)
         props_matrix = torch.zeros(1, N_PROPS)
         labels = np.array([6.0, 7.0, 8.0], dtype=np.float32)
-        ds = AffinityDataset(fps_matrix, props_matrix, [0, 0, 0], [0, 1, 2], [0, 1, 2], labels, ["A", "B", "C"])
+        ds = AffinityDataset(
+            fps_matrix,
+            props_matrix,
+            [0, 0, 0],
+            [0, 1, 2],
+            [0, 1, 2],
+            labels,
+            ["A", "B", "C"],
+        )
 
         _, _, t_idx, std_type_idx, label, assay_id = ds[1]
         assert t_idx.item() == 1
@@ -127,13 +152,28 @@ class TestAffinityDataset:
         fps_matrix = _make_fps_matrix(3)
         props_matrix = _make_props_matrix(3)
         labels = np.zeros(3, dtype=np.float32)
-        ds2 = AffinityDataset(fps_matrix, props_matrix, [0, 1, 2], [0, 1, 2], [0, 1, 2], labels, ["A", "B", "C"])
+        ds2 = AffinityDataset(
+            fps_matrix,
+            props_matrix,
+            [0, 1, 2],
+            [0, 1, 2],
+            [0, 1, 2],
+            labels,
+            ["A", "B", "C"],
+        )
         assert ds2._fps is fps_matrix
 
     def test_dataloader_batches_correctly(self) -> None:
         ds = _make_dataset(n=8, n_unique=3)
         loader = DataLoader(ds, batch_size=4, shuffle=False)
-        fps_batch, props_batch, target_batch, std_type_batch, label_batch, assay_batch = next(iter(loader))
+        (
+            fps_batch,
+            props_batch,
+            target_batch,
+            std_type_batch,
+            label_batch,
+            assay_batch,
+        ) = next(iter(loader))
 
         assert fps_batch.shape == (4, 2048)
         assert props_batch.shape == (4, N_PROPS)

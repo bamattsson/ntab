@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from bind_pred_baseline.preprocess_utils import compute_fingerprints
 
@@ -20,7 +19,9 @@ class TestComputeFingerprints:
         assert fps[0].dtype.kind in ("u", "i")  # unsigned or signed integer
 
     def test_count_values_ge_binary_values_elementwise(self) -> None:
-        _, binary_fps = compute_fingerprints(["mol"], [ASPIRIN_SMILES], fp_type="binary")
+        _, binary_fps = compute_fingerprints(
+            ["mol"], [ASPIRIN_SMILES], fp_type="binary"
+        )
         _, count_fps = compute_fingerprints(["mol"], [ASPIRIN_SMILES], fp_type="count")
         # Wherever the binary bit is set, the count must be at least 1
         assert (count_fps[0] >= binary_fps[0]).all()
@@ -88,6 +89,10 @@ class TestComputeFingerprints:
     def test_parallel_matches_serial(self) -> None:
         mol_names = ["aspirin", "ethanol"]
         smiles = [ASPIRIN_SMILES, ETHANOL_SMILES]
-        _, fps_serial = compute_fingerprints(mol_names, smiles, fp_type="binary", n_jobs=1)
-        _, fps_parallel = compute_fingerprints(mol_names, smiles, fp_type="binary", n_jobs=2)
+        _, fps_serial = compute_fingerprints(
+            mol_names, smiles, fp_type="binary", n_jobs=1
+        )
+        _, fps_parallel = compute_fingerprints(
+            mol_names, smiles, fp_type="binary", n_jobs=2
+        )
         np.testing.assert_array_equal(fps_serial, fps_parallel)

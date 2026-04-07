@@ -86,12 +86,14 @@ def load_activities_as_standard_df(
         print(f"WARNING: dropping {no_smiles} rows with null canonical_smiles")
         df = df[df["canonical_smiles"].notna()].copy()
 
-    df = df.rename(columns={
-        "assay_chembl_id": "assay_id",
-        "ligand_chembl_id": "ligand_name",
-        "canonical_smiles": "smiles",
-        "pchembl_value_filled": "pchembl_value",
-    })
+    df = df.rename(
+        columns={
+            "assay_chembl_id": "assay_id",
+            "ligand_chembl_id": "ligand_name",
+            "canonical_smiles": "smiles",
+            "pchembl_value_filled": "pchembl_value",
+        }
+    )
 
     return df
 
@@ -153,7 +155,9 @@ def run_inference(
     return torch.cat(all_preds).numpy()
 
 
-def _assemble_output_df(df_filtered: pd.DataFrame, pred_pchembl: np.ndarray) -> pd.DataFrame:
+def _assemble_output_df(
+    df_filtered: pd.DataFrame, pred_pchembl: np.ndarray
+) -> pd.DataFrame:
     """Assemble the unified output DataFrame.
 
     Adds pred_pchembl, ensures split defaults to "predict" if absent, and
@@ -194,22 +198,30 @@ def _print_metrics(
         mask = (df["split"] == split).values
         split_assay_ids = [aid for aid, m in zip(assay_ids, mask) if m]
         r, se = pearson_r_per_assay(
-            preds[mask], labels[mask], split_assay_ids,
+            preds[mask],
+            labels[mask],
+            split_assay_ids,
             min_assay_size=min_assay_size,
             n_bootstrap=n_bootstrap,
         )
         n_rows = int(mask.sum())
         se_str = f" \u00b1 {se:.4f}" if se is not None else ""
-        print(f"  {split:25s}  Pearson r = {float(r):.4f}{se_str}  (n_rows = {n_rows:,})")
+        print(
+            f"  {split:25s}  Pearson r = {float(r):.4f}{se_str}  (n_rows = {n_rows:,})"
+        )
 
     if df["split"].nunique() > 1:
         r_all, se_all = pearson_r_per_assay(
-            preds, labels, assay_ids,
+            preds,
+            labels,
+            assay_ids,
             min_assay_size=min_assay_size,
             n_bootstrap=n_bootstrap,
         )
         se_str = f" \u00b1 {se_all:.4f}" if se_all is not None else ""
-        print(f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{se_str}  (n_rows = {len(df):,})")
+        print(
+            f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{se_str}  (n_rows = {len(df):,})"
+        )
 
 
 def evaluate_splits(
@@ -244,18 +256,31 @@ def evaluate_splits(
     df = load_activities_as_standard_df(activities_path, targets_path, splits)
 
     print(f"Preprocessing {len(df):,} rows across splits: {splits}")
-    fp_matrix, props_matrix, fp_indices, target_indices, std_type_indices, df_filtered = \
-        preprocess_for_inference(df, data_dir)
+    (
+        fp_matrix,
+        props_matrix,
+        fp_indices,
+        target_indices,
+        std_type_indices,
+        df_filtered,
+    ) = preprocess_for_inference(df, data_dir)
 
     n_smiles_dropped = len(df) - len(df_filtered)
-    print(f"  {len(df_filtered):,} rows after SMILES filtering ({n_smiles_dropped} dropped)")
+    print(
+        f"  {len(df_filtered):,} rows after SMILES filtering ({n_smiles_dropped} dropped)"
+    )
 
     print(f"Loading model from {checkpoint_path}")
     model = AffinityModel.load_from_checkpoint(str(checkpoint_path), map_location="cpu")
 
     print("Running inference...")
     pred_pchembl = run_inference(
-        model, fp_matrix, props_matrix, fp_indices, target_indices, std_type_indices,
+        model,
+        fp_matrix,
+        props_matrix,
+        fp_indices,
+        target_indices,
+        std_type_indices,
         batch_size=batch_size,
     )
 
@@ -283,19 +308,22 @@ def main() -> None:
     parser.add_argument(
         "--activities", required=True, help="Path to activities.parquet"
     )
-    parser.add_argument(
-        "--targets", required=True, help="Path to targets.parquet"
-    )
+    parser.add_argument("--targets", required=True, help="Path to targets.parquet")
     parser.add_argument(
         "--splits", nargs="+", required=True, help="Split name(s) to evaluate"
     )
     parser.add_argument("--output", required=True, help="Output CSV path")
     parser.add_argument(
-        "--batch-size", type=int, default=512, help="Inference batch size (default: 512)"
+        "--batch-size",
+        type=int,
+        default=512,
+        help="Inference batch size (default: 512)",
     )
     parser.add_argument(
-        "--n-bootstraps", type=int, default=None,
-        help="Number of bootstrap resamples for SE on Pearson r (default: off)"
+        "--n-bootstraps",
+        type=int,
+        default=None,
+        help="Number of bootstrap resamples for SE on Pearson r (default: off)",
     )
     args = parser.parse_args()
 

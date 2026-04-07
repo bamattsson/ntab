@@ -53,17 +53,23 @@ class TestFilterByTanimoto:
         ref_ids = np.array(["ref_0"])
 
         # threshold strictly above 0.5 → novel
-        is_novel, max_sims, _ = filter_by_tanimoto(candidates, references, ref_ids, threshold=0.6)
+        is_novel, max_sims, _ = filter_by_tanimoto(
+            candidates, references, ref_ids, threshold=0.6
+        )
         assert is_novel.tolist() == [True]
         assert pytest.approx(max_sims[0]) == 0.5
 
         # threshold exactly 0.5 → NOT novel (need strictly <)
-        is_novel, max_sims, _ = filter_by_tanimoto(candidates, references, ref_ids, threshold=0.5)
+        is_novel, max_sims, _ = filter_by_tanimoto(
+            candidates, references, ref_ids, threshold=0.5
+        )
         assert is_novel.tolist() == [False]
         assert pytest.approx(max_sims[0]) == 0.5
 
         # threshold below 0.5 → not novel
-        is_novel, _, _ = filter_by_tanimoto(candidates, references, ref_ids, threshold=0.4)
+        is_novel, _, _ = filter_by_tanimoto(
+            candidates, references, ref_ids, threshold=0.4
+        )
         assert is_novel.tolist() == [False]
 
     def test_empty_candidates(self) -> None:
@@ -94,7 +100,7 @@ class TestFilterByTanimoto:
     def test_multiple_candidates_mixed(self) -> None:
         fp_ref = _make_fp([0, 1, 2, 3, 4])
         fp_identical = _make_fp([0, 1, 2, 3, 4])  # sim = 1.0 → not novel
-        fp_disjoint = _make_fp([100, 101, 102])    # sim = 0.0 → novel
+        fp_disjoint = _make_fp([100, 101, 102])  # sim = 0.0 → novel
         is_novel, max_sims, most_similar_ids = filter_by_tanimoto(
             candidate_fps=np.array([fp_identical, fp_disjoint]),
             reference_fps=np.array([fp_ref]),
@@ -109,9 +115,9 @@ class TestFilterByTanimoto:
     def test_takes_max_over_references(self) -> None:
         # Candidate is similar to one reference but not another —
         # must report the most similar one
-        fp_candidate = _make_fp(list(range(10)))       # bits 0-9
-        fp_similar = _make_fp(list(range(5)))           # bits 0-4 → Tanimoto = 0.5
-        fp_dissimilar = _make_fp(list(range(50, 60)))   # no overlap → Tanimoto = 0.0
+        fp_candidate = _make_fp(list(range(10)))  # bits 0-9
+        fp_similar = _make_fp(list(range(5)))  # bits 0-4 → Tanimoto = 0.5
+        fp_dissimilar = _make_fp(list(range(50, 60)))  # no overlap → Tanimoto = 0.0
         is_novel, max_sims, most_similar_ids = filter_by_tanimoto(
             candidate_fps=np.array([fp_candidate]),
             reference_fps=np.array([fp_dissimilar, fp_similar]),

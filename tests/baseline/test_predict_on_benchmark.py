@@ -16,7 +16,11 @@ import pandas as pd
 import pytest
 import torch
 
-from bind_pred_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES, STANDARD_TYPE_INDEX
+from bind_pred_baseline.constants import (
+    FP_SIZE,
+    N_MOL_PROP_FEATURES,
+    STANDARD_TYPE_INDEX,
+)
 from bind_pred_baseline.model import AffinityModel
 
 
@@ -37,7 +41,12 @@ def _make_preproc_dir(tmp_path: Path, n_targets: int = 5) -> Path:
     target_index = {f"P{i:05d}": i for i in range(n_targets)}
     (d / "target_index.json").write_text(json.dumps(target_index))
 
-    meta = {"n_targets": n_targets, "n_standard_types": 3, "fp_size": FP_SIZE, "fp_type": "binary"}
+    meta = {
+        "n_targets": n_targets,
+        "n_standard_types": 3,
+        "fp_size": FP_SIZE,
+        "fp_type": "binary",
+    }
     (d / "meta.json").write_text(json.dumps(meta))
 
     n_features = len(PROP_FEATURE_NAMES)
@@ -75,7 +84,9 @@ def _make_standard_df(
     return pd.DataFrame(rows)
 
 
-def _make_activities_parquet(path: Path, splits: list[str] | None = None, n_targets: int = 3) -> None:
+def _make_activities_parquet(
+    path: Path, splits: list[str] | None = None, n_targets: int = 3
+) -> None:
     """Write a minimal activities.parquet (without uniprot_id — uses target_chembl_id).
 
     Generates 20 rows per split across 2 assays (10 rows each) so that
@@ -86,22 +97,28 @@ def _make_activities_parquet(path: Path, splits: list[str] | None = None, n_targ
     rows = []
     for split in splits:
         for i in range(20):
-            rows.append({
-                "target_chembl_id": f"CHEMBL{i % n_targets}",
-                "assay_chembl_id": f"CHEMBL{100 + i % 2}",
-                "ligand_chembl_id": f"CHEMBL{200 + len(rows)}",
-                "standard_type": ["IC50", "Ki"][i % 2],
-                "pchembl_relation": "=",
-                "pchembl_value_filled": 6.0 + i * 0.1,
-                "split": split,
-                "canonical_smiles": _SMILES[i % len(_SMILES)],
-            })
+            rows.append(
+                {
+                    "target_chembl_id": f"CHEMBL{i % n_targets}",
+                    "assay_chembl_id": f"CHEMBL{100 + i % 2}",
+                    "ligand_chembl_id": f"CHEMBL{200 + len(rows)}",
+                    "standard_type": ["IC50", "Ki"][i % 2],
+                    "pchembl_relation": "=",
+                    "pchembl_value_filled": 6.0 + i * 0.1,
+                    "split": split,
+                    "canonical_smiles": _SMILES[i % len(_SMILES)],
+                }
+            )
     pd.DataFrame(rows).to_parquet(path, index=False)
 
 
 def _make_targets_parquet(path: Path, n_targets: int = 3) -> None:
     rows = [
-        {"target_chembl_id": f"CHEMBL{i}", "uniprot_id": f"P{i:05d}", "gene_name": f"GENE{i}"}
+        {
+            "target_chembl_id": f"CHEMBL{i}",
+            "uniprot_id": f"P{i:05d}",
+            "gene_name": f"GENE{i}",
+        }
         for i in range(n_targets)
     ]
     pd.DataFrame(rows).to_parquet(path, index=False)
@@ -110,6 +127,7 @@ def _make_targets_parquet(path: Path, n_targets: int = 3) -> None:
 def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
     """Save a minimal Lightning-compatible checkpoint for AffinityModel."""
     import lightning
+
     model = AffinityModel(
         n_targets=n_targets,
         n_standard_types=3,
@@ -147,51 +165,68 @@ class TestPreprocessForInference:
     def test_fp_matrix_dtype_float32(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        fp_matrix, *_ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        fp_matrix, *_ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert fp_matrix.dtype == np.float32
 
     def test_fp_matrix_second_dim_is_fp_size(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        fp_matrix, *_ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        fp_matrix, *_ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert fp_matrix.shape[1] == FP_SIZE
 
     def test_props_matrix_dtype_float32(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        _, props_matrix, *_ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        _, props_matrix, *_ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert props_matrix.dtype == np.float32
 
-    def test_props_matrix_second_dim_is_n_mol_prop_features(self, tmp_path: Path) -> None:
+    def test_props_matrix_second_dim_is_n_mol_prop_features(
+        self, tmp_path: Path
+    ) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        _, props_matrix, *_ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        _, props_matrix, *_ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert props_matrix.shape[1] == N_MOL_PROP_FEATURES
 
     def test_fp_indices_dtype_int64(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        _, _, fp_indices, *_ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        _, _, fp_indices, *_ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert fp_indices.dtype == np.int64
 
     def test_target_indices_dtype_int64(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        _, _, _, target_indices, *_ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        _, _, _, target_indices, *_ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert target_indices.dtype == np.int64
 
     def test_std_type_indices_dtype_int64(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        _, _, _, _, std_type_indices, _ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        _, _, _, _, std_type_indices, _ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert std_type_indices.dtype == np.int64
 
     def test_arrays_and_df_filtered_same_length(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=8)
-        _, _, fp_indices, target_indices, std_type_indices, df_filtered = \
+        _, _, fp_indices, target_indices, std_type_indices, df_filtered = (
             preprocess_for_inference(df, _make_preproc_dir(tmp_path))
+        )
         n = len(df_filtered)
         assert len(fp_indices) == n
         assert len(target_indices) == n
@@ -200,7 +235,9 @@ class TestPreprocessForInference:
     def test_fp_indices_in_bounds(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
-        fp_matrix, _, fp_indices, *_ = preprocess_for_inference(_make_standard_df(), _make_preproc_dir(tmp_path))
+        fp_matrix, _, fp_indices, *_ = preprocess_for_inference(
+            _make_standard_df(), _make_preproc_dir(tmp_path)
+        )
         assert (fp_indices >= 0).all()
         assert (fp_indices < len(fp_matrix)).all()
 
@@ -209,23 +246,30 @@ class TestPreprocessForInference:
 
         n_targets = 5
         _, _, _, target_indices, *_ = preprocess_for_inference(
-            _make_standard_df(n_targets=n_targets), _make_preproc_dir(tmp_path, n_targets=n_targets)
+            _make_standard_df(n_targets=n_targets),
+            _make_preproc_dir(tmp_path, n_targets=n_targets),
         )
         assert (target_indices >= 0).all()
         assert (target_indices < n_targets).all()
 
-    def test_std_type_indices_reflect_per_row_standard_type(self, tmp_path: Path) -> None:
+    def test_std_type_indices_reflect_per_row_standard_type(
+        self, tmp_path: Path
+    ) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=9, mixed_standard_types=True)
-        _, _, _, _, std_type_indices, _ = preprocess_for_inference(df, _make_preproc_dir(tmp_path))
+        _, _, _, _, std_type_indices, _ = preprocess_for_inference(
+            df, _make_preproc_dir(tmp_path)
+        )
         assert len(set(std_type_indices.tolist())) > 1
 
     def test_std_type_index_values_match_constants(self, tmp_path: Path) -> None:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=9, mixed_standard_types=True)
-        _, _, _, _, std_type_indices, df_filtered = preprocess_for_inference(df, _make_preproc_dir(tmp_path))
+        _, _, _, _, std_type_indices, df_filtered = preprocess_for_inference(
+            df, _make_preproc_dir(tmp_path)
+        )
         expected = [STANDARD_TYPE_INDEX[st] for st in df_filtered["standard_type"]]
         assert std_type_indices.tolist() == expected
 
@@ -233,7 +277,9 @@ class TestPreprocessForInference:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df()
-        _, _, _, _, _, df_filtered = preprocess_for_inference(df, _make_preproc_dir(tmp_path))
+        _, _, _, _, _, df_filtered = preprocess_for_inference(
+            df, _make_preproc_dir(tmp_path)
+        )
         for col in df.columns:
             assert col in df_filtered.columns
 
@@ -242,7 +288,9 @@ class TestPreprocessForInference:
 
         df = _make_standard_df(n_rows=4).copy()
         df.loc[0, "smiles"] = "not_a_valid_smiles!!!!"
-        _, _, _, _, _, df_filtered = preprocess_for_inference(df, _make_preproc_dir(tmp_path))
+        _, _, _, _, _, df_filtered = preprocess_for_inference(
+            df, _make_preproc_dir(tmp_path)
+        )
         bad_cpd = df.loc[0, "ligand_name"]
         assert bad_cpd not in df_filtered["ligand_name"].values
 
@@ -269,7 +317,9 @@ class TestPreprocessForInference:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
         data_dir = _make_preproc_dir(tmp_path, n_targets=5)
-        (data_dir / "oov_target_mapping.json").write_text(json.dumps({"QUNKNWN": "P00000"}))
+        (data_dir / "oov_target_mapping.json").write_text(
+            json.dumps({"QUNKNWN": "P00000"})
+        )
         df = _make_standard_df(n_rows=3).copy()
         df["uniprot_id"] = "QUNKNWN"
         result = preprocess_for_inference(df, data_dir)
@@ -295,10 +345,22 @@ class TestPreprocessForInference:
         from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
         data_dir = _make_preproc_dir(tmp_path, n_targets=5)
-        df = pd.DataFrame([
-            {"ligand_name": "mol_A", "smiles": "c1ccccc1", "uniprot_id": "P00000", "standard_type": "IC50"},
-            {"ligand_name": "mol_A", "smiles": "c1ccccc1", "uniprot_id": "P00001", "standard_type": "IC50"},
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "ligand_name": "mol_A",
+                    "smiles": "c1ccccc1",
+                    "uniprot_id": "P00000",
+                    "standard_type": "IC50",
+                },
+                {
+                    "ligand_name": "mol_A",
+                    "smiles": "c1ccccc1",
+                    "uniprot_id": "P00001",
+                    "standard_type": "IC50",
+                },
+            ]
+        )
         fp_matrix, _, fp_indices, *_ = preprocess_for_inference(df, data_dir)
         assert fp_indices[0] == fp_indices[1]
 
@@ -309,22 +371,30 @@ class TestPreprocessForInference:
 
 
 class TestLoadActivitiesAsStandardDf:
-    def _setup(self, tmp_path: Path, n_targets: int = 3, splits: list[str] | None = None):
+    def _setup(
+        self, tmp_path: Path, n_targets: int = 3, splits: list[str] | None = None
+    ):
         acts_path = tmp_path / "activities.parquet"
         tgts_path = tmp_path / "targets.parquet"
-        _make_activities_parquet(acts_path, splits=splits or ["test"], n_targets=n_targets)
+        _make_activities_parquet(
+            acts_path, splits=splits or ["test"], n_targets=n_targets
+        )
         _make_targets_parquet(tgts_path, n_targets=n_targets)
         return acts_path, tgts_path
 
     def test_returns_dataframe(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
         assert isinstance(df, pd.DataFrame)
 
     def test_has_required_standard_columns(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
@@ -332,7 +402,9 @@ class TestLoadActivitiesAsStandardDf:
             assert col in df.columns, f"Missing required column: {col}"
 
     def test_renames_assay_chembl_id_to_assay_id(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
@@ -340,7 +412,9 @@ class TestLoadActivitiesAsStandardDf:
         assert "assay_chembl_id" not in df.columns
 
     def test_renames_ligand_chembl_id_to_ligand_name(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
@@ -348,7 +422,9 @@ class TestLoadActivitiesAsStandardDf:
         assert "ligand_chembl_id" not in df.columns
 
     def test_renames_canonical_smiles_to_smiles(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
@@ -356,21 +432,27 @@ class TestLoadActivitiesAsStandardDf:
         assert "canonical_smiles" not in df.columns
 
     def test_filters_to_requested_split(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path, splits=["test", "val"])
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
         assert set(df["split"].unique()) == {"test"}
 
     def test_multiple_splits_included(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path, splits=["test", "val"])
         df = load_activities_as_standard_df(acts, tgts, splits=["test", "val"])
         assert set(df["split"].unique()) == {"test", "val"}
 
     def test_joins_uniprot_id_from_targets(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
@@ -378,14 +460,18 @@ class TestLoadActivitiesAsStandardDf:
         assert df["uniprot_id"].str.startswith("P").all()
 
     def test_raises_when_no_rows_for_any_split(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         with pytest.raises(ValueError, match="No rows found"):
             load_activities_as_standard_df(acts, tgts, splits=["nonexistent"])
 
     def test_drops_null_pchembl_value(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         # Inject null into parquet (source column is still pchembl_value_filled)
@@ -397,8 +483,12 @@ class TestLoadActivitiesAsStandardDf:
         assert "pchembl_value" in df.columns
         assert df["pchembl_value"].notna().all()
 
-    def test_renames_pchembl_value_filled_to_pchembl_value(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import load_activities_as_standard_df
+    def test_renames_pchembl_value_filled_to_pchembl_value(
+        self, tmp_path: Path
+    ) -> None:
+        from bind_pred_baseline.predict_on_benchmark import (
+            load_activities_as_standard_df,
+        )
 
         acts, tgts = self._setup(tmp_path)
         df = load_activities_as_standard_df(acts, tgts, splits=["test"])
@@ -415,14 +505,18 @@ class TestRunInference:
     def _make_arrays(self, n_rows: int = 8, n_unique: int = 5, n_targets: int = 3):
         rng = np.random.default_rng(0)
         fp_matrix = rng.random((n_unique, FP_SIZE), dtype=np.float64).astype(np.float32)
-        props_matrix = rng.random((n_unique, N_MOL_PROP_FEATURES), dtype=np.float64).astype(np.float32)
+        props_matrix = rng.random(
+            (n_unique, N_MOL_PROP_FEATURES), dtype=np.float64
+        ).astype(np.float32)
         fp_indices = np.array([i % n_unique for i in range(n_rows)], dtype=np.int64)
         target_indices = np.zeros(n_rows, dtype=np.int64)
         std_type_indices = np.zeros(n_rows, dtype=np.int64)
         return fp_matrix, props_matrix, fp_indices, target_indices, std_type_indices
 
     def _make_model(self, n_targets: int = 3) -> AffinityModel:
-        return AffinityModel(n_targets=n_targets, n_standard_types=3, hidden_dim=32, target_embed_dim=8)
+        return AffinityModel(
+            n_targets=n_targets, n_standard_types=3, hidden_dim=32, target_embed_dim=8
+        )
 
     def test_returns_ndarray(self) -> None:
         from bind_pred_baseline.predict_on_benchmark import run_inference
@@ -482,13 +576,15 @@ class TestRunInference:
 class TestPrintMetrics:
     def _make_df(self, n_rows: int = 30) -> pd.DataFrame:
         rng = np.random.default_rng(0)
-        return pd.DataFrame({
-            "assay_id": [f"ASSAY{i % 3}" for i in range(n_rows)],
-            "standard_type": ["IC50"] * n_rows,
-            "split": ["test"] * n_rows,
-            "pchembl_value": rng.uniform(4, 9, n_rows).astype(np.float32),
-            "pred_pchembl": rng.uniform(4, 9, n_rows).astype(np.float32),
-        })
+        return pd.DataFrame(
+            {
+                "assay_id": [f"ASSAY{i % 3}" for i in range(n_rows)],
+                "standard_type": ["IC50"] * n_rows,
+                "split": ["test"] * n_rows,
+                "pchembl_value": rng.uniform(4, 9, n_rows).astype(np.float32),
+                "pred_pchembl": rng.uniform(4, 9, n_rows).astype(np.float32),
+            }
+        )
 
     def test_runs_without_error(self, capsys) -> None:
         from bind_pred_baseline.predict_on_benchmark import _print_metrics
@@ -502,13 +598,15 @@ class TestPrintMetrics:
 
         rng = np.random.default_rng(1)
         n = 30
-        df = pd.DataFrame({
-            "assay_id": [f"ASSAY{i % 3}" for i in range(n)],
-            "standard_type": ["IC50"] * n,
-            "split": ["test"] * 15 + ["discard_not_novel"] * 15,
-            "pchembl_value": rng.uniform(4, 9, n).astype(np.float32),
-            "pred_pchembl": rng.uniform(4, 9, n).astype(np.float32),
-        })
+        df = pd.DataFrame(
+            {
+                "assay_id": [f"ASSAY{i % 3}" for i in range(n)],
+                "standard_type": ["IC50"] * n,
+                "split": ["test"] * 15 + ["discard_not_novel"] * 15,
+                "pchembl_value": rng.uniform(4, 9, n).astype(np.float32),
+                "pred_pchembl": rng.uniform(4, 9, n).astype(np.float32),
+            }
+        )
         _print_metrics(df)
         out = capsys.readouterr().out
         assert "test" in out
@@ -519,13 +617,15 @@ class TestPrintMetrics:
 
         rng = np.random.default_rng(2)
         n = 30
-        df = pd.DataFrame({
-            "assay_id": [f"ASSAY{i % 3}" for i in range(n)],
-            "standard_type": ["IC50"] * n,
-            "split": ["test"] * 15 + ["discard_not_novel"] * 15,
-            "pchembl_value": rng.uniform(4, 9, n).astype(np.float32),
-            "pred_pchembl": rng.uniform(4, 9, n).astype(np.float32),
-        })
+        df = pd.DataFrame(
+            {
+                "assay_id": [f"ASSAY{i % 3}" for i in range(n)],
+                "standard_type": ["IC50"] * n,
+                "split": ["test"] * 15 + ["discard_not_novel"] * 15,
+                "pchembl_value": rng.uniform(4, 9, n).astype(np.float32),
+                "pred_pchembl": rng.uniform(4, 9, n).astype(np.float32),
+            }
+        )
         _print_metrics(df)
         out = capsys.readouterr().out
         assert "overall" in out
@@ -574,7 +674,9 @@ class TestEvaluateSplits:
         ckpt_path = tmp_path / "model.ckpt"
         _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
         acts_path = tmp_path / "activities.parquet"
-        _make_activities_parquet(acts_path, splits=["test", "discard_not_novel"], n_targets=n_targets)
+        _make_activities_parquet(
+            acts_path, splits=["test", "discard_not_novel"], n_targets=n_targets
+        )
         targets_path = tmp_path / "targets.parquet"
         _make_targets_parquet(targets_path, n_targets=n_targets)
         return data_dir, ckpt_path, acts_path, targets_path
@@ -634,7 +736,14 @@ class TestEvaluateSplits:
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test", "discard_not_novel"], output_csv=out_csv)
+        evaluate_splits(
+            ckpt,
+            data_dir,
+            acts,
+            tgts,
+            splits=["test", "discard_not_novel"],
+            output_csv=out_csv,
+        )
         df = pd.read_csv(out_csv)
         assert set(df["split"].unique()) == {"test", "discard_not_novel"}
 
@@ -654,7 +763,14 @@ class TestEvaluateSplits:
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
         with pytest.raises(ValueError, match="No rows found"):
-            evaluate_splits(ckpt, data_dir, acts, tgts, splits=["nonexistent_split"], output_csv=out_csv)
+            evaluate_splits(
+                ckpt,
+                data_dir,
+                acts,
+                tgts,
+                splits=["nonexistent_split"],
+                output_csv=out_csv,
+            )
 
     def test_split_column_preserved_in_output(self, tmp_path: Path) -> None:
         from bind_pred_baseline.predict_on_benchmark import evaluate_splits
@@ -679,6 +795,14 @@ class TestEvaluateSplits:
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv, n_bootstrap=50)
+        evaluate_splits(
+            ckpt,
+            data_dir,
+            acts,
+            tgts,
+            splits=["test"],
+            output_csv=out_csv,
+            n_bootstrap=50,
+        )
         out = capsys.readouterr().out
         assert "±" in out

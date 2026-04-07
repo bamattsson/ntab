@@ -10,7 +10,6 @@ from bind_pred_baseline.constants import FP_SIZE, MIN_ASSAY_SIZE, N_MOL_PROP_FEA
 from bind_pred_baseline.model_utils import pearson_r_per_assay
 
 
-
 class AffinityModel(L.LightningModule):
     """MLP baseline for protein-ligand affinity prediction.
 
@@ -80,7 +79,13 @@ class AffinityModel(L.LightningModule):
         )
         self._loss = nn.MSELoss()
 
-    def forward(self, fps: torch.Tensor, mol_props: torch.Tensor, target_idx: torch.Tensor, standard_type_idx: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        fps: torch.Tensor,
+        mol_props: torch.Tensor,
+        target_idx: torch.Tensor,
+        standard_type_idx: torch.Tensor,
+    ) -> torch.Tensor:
         """Return predicted pchembl values, shape (batch, 1)."""
         tensors_to_head = []
         if self.use_fps:
@@ -91,9 +96,15 @@ class AffinityModel(L.LightningModule):
         if self.use_mol_props:
             tensors_to_head.append(mol_props)
         combined = torch.cat(tensors_to_head, dim=1)
-        return self.head(combined) + self.target_bias(target_idx) + self.assay_type_bias(standard_type_idx)
+        return (
+            self.head(combined)
+            + self.target_bias(target_idx)
+            + self.assay_type_bias(standard_type_idx)
+        )
 
-    def _shared_step(self, batch: tuple) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, list[str], int]:
+    def _shared_step(
+        self, batch: tuple
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, list[str], int]:
         fps, mol_props, target_idx, standard_type_idx, labels, assay_ids = batch
         preds = self(fps, mol_props, target_idx, standard_type_idx).squeeze(1)
         loss = self._loss(preds, labels)
@@ -101,7 +112,14 @@ class AffinityModel(L.LightningModule):
 
     def training_step(self, batch: tuple, batch_idx: int) -> torch.Tensor:
         loss, _, _, _, batch_size = self._shared_step(batch)
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, batch_size=batch_size)
+        self.log(
+            "train_loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            batch_size=batch_size,
+        )
         return loss
 
     def validation_step(self, batch: tuple, batch_idx: int) -> None:
@@ -156,7 +174,10 @@ class AffinityModel(L.LightningModule):
             else:
                 decay.append(param)
         optimizer = torch.optim.AdamW(
-            [{"params": decay, "weight_decay": 1e-5}, {"params": no_decay, "weight_decay": 0.0}],
+            [
+                {"params": decay, "weight_decay": 1e-5},
+                {"params": no_decay, "weight_decay": 0.0},
+            ],
             lr=self.lr,
         )
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50)

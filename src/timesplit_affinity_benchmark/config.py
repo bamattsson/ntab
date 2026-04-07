@@ -23,10 +23,14 @@ class AssayFilterConfig:
 
 @dataclass
 class PipelineConfig:
-    tanimoto_threshold: float | None  # None disables the novelty filter (all candidates treated as novel)
+    tanimoto_threshold: (
+        float | None
+    )  # None disables the novelty filter (all candidates treated as novel)
     keep_discard_not_novel: bool
-    year_val_start: int = 2022   # doc_year >= this is val; doc_year < this is train
-    year_test_start: int = 2023  # doc_year >= this is test; year_val_start <= doc_year < this is val
+    year_val_start: int = 2022  # doc_year >= this is val; doc_year < this is train
+    year_test_start: int = (
+        2023  # doc_year >= this is test; year_val_start <= doc_year < this is val
+    )
     n_jobs: int = 1
     activity_limit: int | None = None
     filter_val_and_test_sets: AssayFilterConfig | None = None
@@ -36,7 +40,9 @@ class PipelineConfig:
 class Config:
     chembl_requester: ChEMBLConfig
     pipeline: PipelineConfig
-    out_dir: str = "out"  # root output directory; intermediate files go to {out_dir}/intermediate/
+    out_dir: str = (
+        "out"  # root output directory; intermediate files go to {out_dir}/intermediate/
+    )
 
 
 def load_config(path: str | Path) -> Config:

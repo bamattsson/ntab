@@ -1,5 +1,4 @@
 import multiprocessing
-from functools import partial
 
 import numpy as np
 from rdkit import Chem

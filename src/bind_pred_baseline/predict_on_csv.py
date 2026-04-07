@@ -15,11 +15,14 @@ Usage
 import argparse
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from bind_pred_baseline.constants import STANDARD_TYPE_INDEX
-from bind_pred_baseline.predict_on_benchmark import _assemble_output_df, _print_metrics, run_inference
+from bind_pred_baseline.predict_on_benchmark import (
+    _assemble_output_df,
+    _print_metrics,
+    run_inference,
+)
 from bind_pred_baseline.model import AffinityModel
 from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
 
@@ -57,7 +60,9 @@ def load_csv_as_standard_df(
         df = df.copy()
         df["standard_type"] = default_standard_type
     else:
-        df["standard_type"] = df["standard_type"].str.lower().map(_ST_NORM).fillna(df["standard_type"])
+        df["standard_type"] = (
+            df["standard_type"].str.lower().map(_ST_NORM).fillna(df["standard_type"])
+        )
 
     df["assay_id"] = df["uniprot_id"]
     df["split"] = "predict"
@@ -93,8 +98,14 @@ def predict_on_csv(
     df = load_csv_as_standard_df(input_csv, default_standard_type=standard_type)
 
     print(f"Preprocessing {len(df):,} rows...")
-    fp_matrix, props_matrix, fp_indices, target_indices, std_type_indices, df_filtered = \
-        preprocess_for_inference(df, data_dir)
+    (
+        fp_matrix,
+        props_matrix,
+        fp_indices,
+        target_indices,
+        std_type_indices,
+        df_filtered,
+    ) = preprocess_for_inference(df, data_dir)
 
     n_dropped = len(df) - len(df_filtered)
     print(f"  {len(df_filtered):,} rows after SMILES filtering ({n_dropped} dropped)")
@@ -104,7 +115,12 @@ def predict_on_csv(
 
     print("Running inference...")
     pred_pchembl = run_inference(
-        model, fp_matrix, props_matrix, fp_indices, target_indices, std_type_indices,
+        model,
+        fp_matrix,
+        props_matrix,
+        fp_indices,
+        target_indices,
+        std_type_indices,
         batch_size=batch_size,
         device=device,
     )
@@ -131,25 +147,33 @@ def main() -> None:
         "--data-dir", required=True, help="Training preprocessing directory"
     )
     parser.add_argument(
-        "--input-csv", required=True,
-        help="Input CSV with columns: ligand_name, uniprot_id, smiles"
+        "--input-csv",
+        required=True,
+        help="Input CSV with columns: ligand_name, uniprot_id, smiles",
     )
     parser.add_argument("--output-csv", required=True, help="Output CSV path")
     parser.add_argument(
-        "--standard-type", default="IC50",
+        "--standard-type",
+        default="IC50",
         choices=["IC50", "Ki", "Kd"],
-        help="Assay type applied to all rows when not in CSV (default: IC50)"
+        help="Assay type applied to all rows when not in CSV (default: IC50)",
     )
     parser.add_argument(
-        "--batch-size", type=int, default=256, help="Inference batch size (default: 256)"
+        "--batch-size",
+        type=int,
+        default=256,
+        help="Inference batch size (default: 256)",
     )
     parser.add_argument(
-        "--n-bootstraps", type=int, default=None,
-        help="Number of bootstrap resamples for SE on Pearson r (default: off)"
+        "--n-bootstraps",
+        type=int,
+        default=None,
+        help="Number of bootstrap resamples for SE on Pearson r (default: off)",
     )
     parser.add_argument(
-        "--device", default=None,
-        help="Torch device (default: auto-detect GPU, fall back to CPU)"
+        "--device",
+        default=None,
+        help="Torch device (default: auto-detect GPU, fall back to CPU)",
     )
     args = parser.parse_args()
 

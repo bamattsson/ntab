@@ -44,8 +44,7 @@ def _filter_single_split(
 
     # Steps 3 & 4: compute per-group stats and apply thresholds
     group_stats = (
-        df_split
-        .groupby(["assay_chembl_id", "standard_type"])
+        df_split.groupby(["assay_chembl_id", "standard_type"])
         .agg(
             n_cpd=("ligand_chembl_id", "nunique"),
             std=("pchembl_value_filled", "std"),
@@ -53,8 +52,7 @@ def _filter_single_split(
         .reset_index()
     )
     passing = group_stats[
-        (group_stats["n_cpd"] >= min_cpd_per_assay)
-        & (group_stats["std"] >= min_std)
+        (group_stats["n_cpd"] >= min_cpd_per_assay) & (group_stats["std"] >= min_std)
     ][["assay_chembl_id", "standard_type", "n_cpd"]].copy()
 
     if passing.empty:
@@ -62,9 +60,8 @@ def _filter_single_split(
 
     # Step 5: one assay per DOI
     if one_assay_per_doi:
-        doi_map = (
-            assay_docs_df[["assay_chembl_id", "doi"]]
-            .drop_duplicates("assay_chembl_id")
+        doi_map = assay_docs_df[["assay_chembl_id", "doi"]].drop_duplicates(
+            "assay_chembl_id"
         )
         passing = passing.merge(doi_map, on="assay_chembl_id", how="left")
 
@@ -80,8 +77,7 @@ def _filter_single_split(
 
         # Sort so that the first row per DOI group is the winner
         passing = (
-            passing
-            .sort_values(["n_cpd", "_assay_num"], ascending=[False, True])
+            passing.sort_values(["n_cpd", "_assay_num"], ascending=[False, True])
             .groupby("doi", dropna=False)
             .first()
             .reset_index()[["assay_chembl_id", "standard_type"]]

@@ -39,11 +39,16 @@ class ChEMBLRequester:
         LEFT JOIN docs d ON d.doc_id = a.doc_id
         GROUP BY md.chembl_id, cs.canonical_smiles, cp.mw_freebase
         """
-        col_order = ["chembl_id", "canonical_smiles", "cpd_earliest_year", "mw_freebase"]
+        col_order = [
+            "chembl_id",
+            "canonical_smiles",
+            "cpd_earliest_year",
+            "mw_freebase",
+        ]
         self.cur.execute(query)
         rows = self.cur.fetchall()
         return [{k: v for k, v in zip(col_order, row)} for row in rows]
-    
+
     def _get_component_classification(self) -> dict[int, tuple[str | None, str | None]]:
         """Return {component_id: (target_class, target_family)} for all components.
 
@@ -115,13 +120,27 @@ class ChEMBLRequester:
         WHERE td.target_type = 'SINGLE PROTEIN'
             AND cs.component_type = 'PROTEIN'
         """
-        col_order = ["target_chembl_id", "target_name", "organism", "uniprot_id", "component_id", "gene_name", "sequence"]
+        col_order = [
+            "target_chembl_id",
+            "target_name",
+            "organism",
+            "uniprot_id",
+            "component_id",
+            "gene_name",
+            "sequence",
+        ]
         self.cur.execute(query)
         rows = self.cur.fetchall()
 
         final_col_order = [
-            "target_chembl_id", "uniprot_id", "gene_name",
-            "target_class", "target_family", "organism", "target_name", "sequence",
+            "target_chembl_id",
+            "uniprot_id",
+            "gene_name",
+            "target_class",
+            "target_family",
+            "organism",
+            "target_name",
+            "sequence",
         ]
         classification = self._get_component_classification()
         results = []
@@ -154,14 +173,20 @@ class ChEMBLRequester:
         JOIN docs d ON a.doc_id = d.doc_id
         LEFT JOIN source s ON d.src_id = s.src_id
         """
-        col_order = ["assay_chembl_id", "doc_chembl_id", "doi", "title", "src_description"]
+        col_order = [
+            "assay_chembl_id",
+            "doc_chembl_id",
+            "doi",
+            "title",
+            "src_description",
+        ]
         self.cur.execute(query)
         rows = self.cur.fetchall()
         return [{k: v for k, v in zip(col_order, row)} for row in rows]
 
     def get_all_single_protein_activity_data(
-            self,
-            target_chembl_ids: Optional[list[str]] = None,
+        self,
+        target_chembl_ids: Optional[list[str]] = None,
     ) -> list[dict[str, Union[str, float, None]]]:
         """Return activity data for single-protein binding assays at maximum confidence.
 
@@ -211,10 +236,17 @@ class ChEMBLRequester:
             AND vs.mutation IS NULL
         """
         col_order = [
-            "target_chembl_id", "assay_chembl_id", "ligand_chembl_id",
-            "standard_type", "standard_relation", "pchembl_value",
-            "standard_value", "standard_units", "doc_year",
-            "data_validity_comment", "potential_duplicate",
+            "target_chembl_id",
+            "assay_chembl_id",
+            "ligand_chembl_id",
+            "standard_type",
+            "standard_relation",
+            "pchembl_value",
+            "standard_value",
+            "standard_units",
+            "doc_year",
+            "data_validity_comment",
+            "potential_duplicate",
         ]
         params = None
         if target_chembl_ids is not None:

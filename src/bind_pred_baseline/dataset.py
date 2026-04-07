@@ -37,14 +37,20 @@ class AffinityDataset(Dataset):
         self._mol_props = props_matrix
         self._fp_indices = torch.tensor(fp_indices, dtype=torch.long)
         self._target_indices = torch.tensor(target_indices, dtype=torch.long)
-        self._standard_type_indices = torch.tensor(standard_type_indices, dtype=torch.long)
+        self._standard_type_indices = torch.tensor(
+            standard_type_indices, dtype=torch.long
+        )
         self._labels = torch.tensor(labels, dtype=torch.float32)
         self._assay_ids = list(assay_ids)
 
     def __len__(self) -> int:
         return len(self._labels)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, str]:
+    def __getitem__(
+        self, idx: int
+    ) -> tuple[
+        torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, str
+    ]:
         fp = self._fps[self._fp_indices[idx]]
         mol_props = self._mol_props[self._fp_indices[idx]]
         return (

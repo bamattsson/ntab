@@ -30,6 +30,7 @@ model = [
 dev = [
     "pytest",
     "pytest-mock",
+    "ruff",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -37,6 +38,9 @@ packages = [
     "src/timesplit_affinity_benchmark",
     "src/bind_pred_baseline",
 ]
+
+[tool.ruff.lint]
+ignore = ["E712"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

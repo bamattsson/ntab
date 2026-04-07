@@ -1,4 +1,4 @@
-# TNAB – Time-split Novelty filtered Affinity Benchmark
+# TNAB – Time-split Novelty-filtered Affinity Benchmark
 
 ![](docs/benchmark_methodology.png)
 
@@ -149,4 +149,13 @@ If you use TNAB in your research, please cite:
 ```bash
 uv sync --extra dev
 uv run pytest
+```
+
+## Linting
+
+This project uses [ruff](https://github.com/astral-sh/ruff) for linting and formatting:
+
+```bash
+uv run ruff check src/ tests/
+uv run ruff format src/ tests/
 ```

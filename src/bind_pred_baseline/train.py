@@ -47,7 +47,9 @@ class AffinityDataModule(L.LightningDataModule):
         self.n_standard_types: int = meta.get("n_standard_types", 3)
         self.n_mol_props: int = len(MOL_PROP_FEATURES)
 
-    def _load_split(self, name: str, fps_matrix: torch.Tensor, mol_props_matrix: torch.Tensor) -> AffinityDataset:
+    def _load_split(
+        self, name: str, fps_matrix: torch.Tensor, mol_props_matrix: torch.Tensor
+    ) -> AffinityDataset:
         data = np.load(self.data_dir / f"{name}.npz", allow_pickle=True)
         return AffinityDataset(
             fps_matrix=fps_matrix,
@@ -61,7 +63,9 @@ class AffinityDataModule(L.LightningDataModule):
 
     def setup(self, stage: str | None = None) -> None:
         print("Loading fingerprints matrix...")
-        fps_np = np.load(self.data_dir / "fingerprints_ecfp4.npz")["fps"].astype(np.float32)
+        fps_np = np.load(self.data_dir / "fingerprints_ecfp4.npz")["fps"].astype(
+            np.float32
+        )
         fps_matrix = torch.from_numpy(fps_np)
         print(f"  Loaded: {fps_matrix.shape}, {fps_matrix.nbytes / 1e9:.2f} GB")
 
@@ -69,8 +73,12 @@ class AffinityDataModule(L.LightningDataModule):
         mol_props_npz = np.load(self.data_dir / "mol_properties.npz")
         feature_names = list(mol_props_npz["feature_names"])
         col_indices = [feature_names.index(f) for f in MOL_PROP_FEATURES]
-        mol_props_matrix = torch.from_numpy(mol_props_npz["props"][:, col_indices].astype(np.float32))
-        print(f"  Loaded: {mol_props_matrix.shape} ({len(MOL_PROP_FEATURES)} features: {MOL_PROP_FEATURES})")
+        mol_props_matrix = torch.from_numpy(
+            mol_props_npz["props"][:, col_indices].astype(np.float32)
+        )
+        print(
+            f"  Loaded: {mol_props_matrix.shape} ({len(MOL_PROP_FEATURES)} features: {MOL_PROP_FEATURES})"
+        )
 
         self._train_ds = self._load_split("train", fps_matrix, mol_props_matrix)
         self._val_ds = self._load_split("val", fps_matrix, mol_props_matrix)
@@ -78,27 +86,40 @@ class AffinityDataModule(L.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
-            self._train_ds, batch_size=self.batch_size,
-            shuffle=True, num_workers=self.num_workers, pin_memory=True,
+            self._train_ds,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            pin_memory=True,
         )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
-            self._val_ds, batch_size=self.batch_size,
-            shuffle=False, num_workers=self.num_workers, pin_memory=True,
+            self._val_ds,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=True,
         )
 
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
-            self._test_ds, batch_size=self.batch_size,
-            shuffle=False, num_workers=self.num_workers, pin_memory=True,
+            self._test_ds,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=True,
         )
 
 
 class AffinityCLI(LightningCLI):
     def add_arguments_to_parser(self, parser) -> None:
-        parser.link_arguments("data.n_targets", "model.n_targets", apply_on="instantiate")
-        parser.link_arguments("data.n_standard_types", "model.n_standard_types", apply_on="instantiate")
+        parser.link_arguments(
+            "data.n_targets", "model.n_targets", apply_on="instantiate"
+        )
+        parser.link_arguments(
+            "data.n_standard_types", "model.n_standard_types", apply_on="instantiate"
+        )
 
 
 def cli_main() -> None:

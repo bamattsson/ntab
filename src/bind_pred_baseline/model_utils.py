@@ -66,7 +66,7 @@ def pearson_r_per_assay(
     num_assays = len(rs_a)
     boot_idx = rng.integers(0, num_assays, size=(n_bootstrap, num_assays))
     boot_rs = rs_a[boot_idx]  # (n_bootstrap, num_assays)
-    boot_ws = w_a[boot_idx]   # (n_bootstrap, num_assays)
+    boot_ws = w_a[boot_idx]  # (n_bootstrap, num_assays)
     boot_means = (boot_rs * boot_ws).sum(axis=1) / boot_ws.sum(axis=1)
     se = float(boot_means.std())
     return pearson_r, se
@@ -79,11 +79,18 @@ class MetricsPlotCallback(L.Callback):
         try:
             import csv
             import matplotlib
+
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
 
             metrics_csv = f"{trainer.logger.log_dir}/metrics.csv"
-            epochs_val, val_loss, val_pearson_r, train_epochs, train_loss = [], [], [], [], []
+            epochs_val, val_loss, val_pearson_r, train_epochs, train_loss = (
+                [],
+                [],
+                [],
+                [],
+                [],
+            )
             epoch_rows, all_fieldnames = [], []
             with open(metrics_csv) as f:
                 reader = csv.DictReader(f)
@@ -91,7 +98,9 @@ class MetricsPlotCallback(L.Callback):
                 for row in reader:
                     epoch = int(row["epoch"])
                     is_epoch_row = bool(
-                        row.get("val_loss") or row.get("val_pearson_r") or row.get("train_loss_epoch")
+                        row.get("val_loss")
+                        or row.get("val_pearson_r")
+                        or row.get("train_loss_epoch")
                     )
                     if is_epoch_row:
                         epoch_rows.append(row)
@@ -117,7 +126,11 @@ class MetricsPlotCallback(L.Callback):
             axes[1].set(title="Val Loss (MSE)", xlabel="Epoch", ylabel="MSE")
             axes[1].grid(True, alpha=0.3)
             axes[2].plot(epochs_val, val_pearson_r, "g-o", ms=4)
-            axes[2].set(title="Val Pearson r (size-weighted)", xlabel="Epoch", ylabel="Pearson r")
+            axes[2].set(
+                title="Val Pearson r (size-weighted)",
+                xlabel="Epoch",
+                ylabel="Pearson r",
+            )
             axes[2].grid(True, alpha=0.3)
 
             plt.tight_layout()
@@ -127,6 +140,5 @@ class MetricsPlotCallback(L.Callback):
             print(f"plot saved → {plot_path}")
         except Exception:
             import traceback
+
             traceback.print_exc()
-
-

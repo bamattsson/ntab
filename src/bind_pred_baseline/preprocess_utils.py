@@ -1,6 +1,5 @@
 """Data loading, filtering, preprocessing utilities, fingerprint and property computation."""
 
-import json
 import multiprocessing
 import os
 from pathlib import Path
@@ -77,7 +76,9 @@ def compute_fingerprints(
         Tuple of (names, fingerprints) as numpy arrays, with failed parses removed.
         names shape: (N,), fingerprints shape: (N, fp_size).
     """
-    pairs = [(name, smi, fp_type, radius, fp_size) for name, smi in zip(mol_names, smiles)]
+    pairs = [
+        (name, smi, fp_type, radius, fp_size) for name, smi in zip(mol_names, smiles)
+    ]
 
     if n_jobs == -1:
         n_jobs = multiprocessing.cpu_count()
@@ -189,7 +190,9 @@ def compute_mol_properties(
         n_jobs = multiprocessing.cpu_count()
 
     if n_jobs == 1:
-        results = [_compute_one(p) for p in tqdm(pairs, desc="Computing mol properties")]
+        results = [
+            _compute_one(p) for p in tqdm(pairs, desc="Computing mol properties")
+        ]
     else:
         with multiprocessing.Pool(processes=n_jobs) as pool:
             results = list(
@@ -241,6 +244,7 @@ def normalise_mol_properties(
 # Data loading, filtering, and preprocessing
 # ---------------------------------------------------------------------------
 
+
 def load_activities(path: str | Path) -> pd.DataFrame:
     """Load activities.parquet and filter to IC50 measurements with relation '=' on wild-type targets.
 
@@ -254,7 +258,9 @@ def load_activities(path: str | Path) -> pd.DataFrame:
         Filtered DataFrame.
     """
     df = pd.read_parquet(path)
-    df = df[df["standard_type"].isin(["IC50", "Ki", "Kd"]) & (df["pchembl_relation"] == "=")]
+    df = df[
+        df["standard_type"].isin(["IC50", "Ki", "Kd"]) & (df["pchembl_relation"] == "=")
+    ]
     if "mutation" in df.columns:
         df = df[df["mutation"].isna()]
     df = df[df["pchembl_value_filled"].notna()]
@@ -278,14 +284,14 @@ def average_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     other = df[~train_mask]
 
     group_keys = ["target_chembl_id", "ligand_chembl_id", "standard_type"]
-    pchembl_mean = train.groupby(group_keys, as_index=False)["pchembl_value_filled"].mean()
+    pchembl_mean = train.groupby(group_keys, as_index=False)[
+        "pchembl_value_filled"
+    ].mean()
     # Preserve all other columns by taking the first occurrence per group,
     # then overwrite pchembl_value_filled with the computed mean.
     train_first = train.groupby(group_keys, as_index=False).first()
-    train_averaged = (
-        train_first
-        .drop(columns=["pchembl_value_filled"])
-        .merge(pchembl_mean, on=group_keys)
+    train_averaged = train_first.drop(columns=["pchembl_value_filled"]).merge(
+        pchembl_mean, on=group_keys
     )
 
     return pd.concat([train_averaged, other], ignore_index=True)
@@ -379,14 +385,17 @@ def find_closest_training_targets(
     eligible_train_ids = train_ids
     if train_counts and min_train_datapoints > 0:
         eligible_train_ids = [
-            tid for tid in train_ids
-            if train_counts.get(tid, 0) >= min_train_datapoints
+            tid for tid in train_ids if train_counts.get(tid, 0) >= min_train_datapoints
         ]
         if not eligible_train_ids:
-            print(f"  Warning: no training targets meet min_train_datapoints={min_train_datapoints}, falling back to all targets")
+            print(
+                f"  Warning: no training targets meet min_train_datapoints={min_train_datapoints}, falling back to all targets"
+            )
             eligible_train_ids = train_ids
         else:
-            print(f"  {len(eligible_train_ids)}/{len(train_ids)} training targets eligible (>= {min_train_datapoints} datapoints)")
+            print(
+                f"  {len(eligible_train_ids)}/{len(train_ids)} training targets eligible (>= {min_train_datapoints} datapoints)"
+            )
 
     train_with_seq = [
         (tid, _sanitize(sequences[tid]))
@@ -400,13 +409,14 @@ def find_closest_training_targets(
     for oov_id in oov_ids:
         seq = sequences.get(oov_id)
         if seq and _has_nonstandard(seq):
-            print(f"  Warning: {oov_id} has non-standard amino acid characters — sanitizing with glycine ('G') before alignment")
+            print(
+                f"  Warning: {oov_id} has non-standard amino acid characters — sanitizing with glycine ('G') before alignment"
+            )
             seq = _sanitize(seq)
         sanitized_oov[oov_id] = seq
 
     worker_args = [
-        (oov_id, sanitized_oov[oov_id], train_with_seq, fallback)
-        for oov_id in oov_ids
+        (oov_id, sanitized_oov[oov_id], train_with_seq, fallback) for oov_id in oov_ids
     ]
 
     effective_jobs = os.cpu_count() if n_jobs == -1 else n_jobs
@@ -440,7 +450,9 @@ def load_split_from_file(path: str | Path) -> dict[str, str]:
     """
     df = pd.read_csv(path)
     if "uniprot_id" not in df.columns or "data_split" not in df.columns:
-        raise ValueError(f"split_from_file CSV must have 'uniprot_id' and 'data_split' columns, got: {list(df.columns)}")
+        raise ValueError(
+            f"split_from_file CSV must have 'uniprot_id' and 'data_split' columns, got: {list(df.columns)}"
+        )
     return dict(zip(df["uniprot_id"], df["data_split"]))
 
 

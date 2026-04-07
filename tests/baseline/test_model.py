@@ -14,7 +14,12 @@ from bind_pred_baseline.model_utils import pearson_r_per_assay
 # ---------------------------------------------------------------------------
 
 
-def _make_model(n_targets: int = 10, n_standard_types: int = 3, hidden_dim: int = 64, embed_dim: int = 16) -> AffinityModel:
+def _make_model(
+    n_targets: int = 10,
+    n_standard_types: int = 3,
+    hidden_dim: int = 64,
+    embed_dim: int = 16,
+) -> AffinityModel:
     return AffinityModel(
         n_targets=n_targets,
         n_standard_types=n_standard_types,
@@ -29,7 +34,9 @@ def _make_batch(
     batch_size: int = 8,
     n_targets: int = 10,
     n_standard_types: int = 3,
-) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, list[str]]:
+) -> tuple[
+    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, list[str]
+]:
     rng = torch.Generator().manual_seed(0)
     fps = torch.rand(batch_size, FP_SIZE, generator=rng)
     props = torch.randn(batch_size, N_MOL_PROP_FEATURES)
@@ -44,49 +51,60 @@ def _make_batch(
 # pearson_r_per_assay
 # ---------------------------------------------------------------------------
 
+
 class TestPearsonRPerAssay:
     def test_perfect_correlation_returns_one(self) -> None:
         # Predictions == labels → Pearson r = 1.0
         vals = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r, _ = pearson_r_per_assay(preds=vals, labels=vals, assay_ids=assay_ids, min_assay_size=3)
+        r, _ = pearson_r_per_assay(
+            preds=vals, labels=vals, assay_ids=assay_ids, min_assay_size=3
+        )
         assert pytest.approx(r, abs=1e-5) == 1.0
 
     def test_perfect_anticorrelation_returns_minus_one(self) -> None:
         preds = np.array([8.0, 7.0, 6.0, 5.0, 4.0])
         labels = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        r, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
         assert pytest.approx(r, abs=1e-5) == -1.0
 
     def test_averages_across_assays(self) -> None:
         # Assay A: perfect correlation (r=1), Assay B: perfect anticorrelation (r=-1)
         # Mean should be 0
-        preds  = np.array([1.0, 2.0, 3.0, 3.0, 2.0, 1.0])
+        preds = np.array([1.0, 2.0, 3.0, 3.0, 2.0, 1.0])
         labels = np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
         assay_ids = ["A", "A", "A", "B", "B", "B"]
-        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        r, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
         assert pytest.approx(r, abs=1e-5) == 0.0
 
     def test_assays_below_min_size_are_skipped(self) -> None:
         # Assay A has 5 samples (qualifies), Assay B has 2 (skipped)
         # Only Assay A contributes, which has perfect correlation
-        preds  = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 9.0, 1.0])
+        preds = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 9.0, 1.0])
         labels = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 9.0])
         assay_ids = ["A", "A", "A", "A", "A", "B", "B"]
-        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        r, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
         assert pytest.approx(r, abs=1e-5) == 1.0
 
     def test_all_assays_below_min_size_returns_nan(self) -> None:
-        preds  = np.array([1.0, 2.0])
+        preds = np.array([1.0, 2.0])
         labels = np.array([1.0, 2.0])
         assay_ids = ["A", "A"]
-        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3)
+        r, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
         assert math.isnan(r)
 
     def test_default_min_assay_size_is_10(self) -> None:
         # 9 samples in one assay → should be skipped → NaN
-        preds  = np.arange(9, dtype=np.float32)
+        preds = np.arange(9, dtype=np.float32)
         labels = np.arange(9, dtype=np.float32)
         assay_ids = ["A"] * 9
         r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
@@ -96,6 +114,7 @@ class TestPearsonRPerAssay:
 # ---------------------------------------------------------------------------
 # AffinityModel — forward pass
 # ---------------------------------------------------------------------------
+
 
 class TestAffinityModelForward:
     def test_output_shape_is_batch_by_1(self) -> None:
@@ -140,6 +159,7 @@ class TestAffinityModelForward:
 # ---------------------------------------------------------------------------
 # AffinityModel — training_step and validation_step
 # ---------------------------------------------------------------------------
+
 
 class TestAffinityModelSteps:
     def test_training_step_returns_scalar_loss(self) -> None:
@@ -189,8 +209,8 @@ class TestAffinityModelSteps:
         model = _make_model()
         batch = _make_batch(batch_size=6)
         model.validation_step(batch, batch_idx=0)
-        assert len(model._val_preds) == 1       # one batch tensor appended
-        assert len(model._val_assay_ids) == 6   # 6 assay id strings
+        assert len(model._val_preds) == 1  # one batch tensor appended
+        assert len(model._val_assay_ids) == 6  # 6 assay id strings
 
     def test_accumulated_state_cleared_after_validation_epoch_end(self) -> None:
         model = _make_model()

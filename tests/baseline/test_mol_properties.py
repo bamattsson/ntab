@@ -31,12 +31,26 @@ class TestFeatureNames:
 
     def test_tier1_features_present(self) -> None:
         # These six must be in FEATURE_NAMES (exact spelling may differ but key words must match)
-        tier1 = ["MolLogP", "ExactMolWt", "TPSA", "NumHDonors", "NumHAcceptors", "NumRotatableBonds"]
+        tier1 = [
+            "MolLogP",
+            "ExactMolWt",
+            "TPSA",
+            "NumHDonors",
+            "NumHAcceptors",
+            "NumRotatableBonds",
+        ]
         for name in tier1:
             assert name in FEATURE_NAMES, f"{name!r} not found in FEATURE_NAMES"
 
     def test_tier2_features_present(self) -> None:
-        tier2 = ["FormalCharge", "MolMR", "FractionCSP3", "RingCount", "NumAromaticRings", "HeavyAtomCount"]
+        tier2 = [
+            "FormalCharge",
+            "MolMR",
+            "FractionCSP3",
+            "RingCount",
+            "NumAromaticRings",
+            "HeavyAtomCount",
+        ]
         for name in tier2:
             assert name in FEATURE_NAMES, f"{name!r} not found in FEATURE_NAMES"
 
@@ -201,7 +215,9 @@ class TestNormaliseMolProperties:
         normed = normalise_mol_properties(props, props.mean(axis=0), props.std(axis=0))
         non_const = normed.std(axis=0) > 0
         if non_const.any():
-            np.testing.assert_allclose(normed[:, non_const].mean(axis=0), 0.0, atol=1e-5)
+            np.testing.assert_allclose(
+                normed[:, non_const].mean(axis=0), 0.0, atol=1e-5
+            )
 
     def test_self_normalised_std_is_near_one(self) -> None:
         _, props = compute_mol_properties(
@@ -211,9 +227,7 @@ class TestNormaliseMolProperties:
         normed = normalise_mol_properties(props, props.mean(axis=0), props.std(axis=0))
         non_const = normed.std(axis=0) > 1e-6
         if non_const.any():
-            np.testing.assert_allclose(
-                normed[:, non_const].std(axis=0), 1.0, atol=1e-4
-            )
+            np.testing.assert_allclose(normed[:, non_const].std(axis=0), 1.0, atol=1e-4)
 
     def test_constant_column_becomes_zero_not_nan(self) -> None:
         props = np.ones((3, 12), dtype=np.float32)

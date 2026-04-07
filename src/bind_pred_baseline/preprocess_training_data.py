@@ -45,7 +45,9 @@ from bind_pred_baseline.preprocess_utils import (
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Preprocess data for the binding prediction baseline.")
+    parser = argparse.ArgumentParser(
+        description="Preprocess data for the binding prediction baseline."
+    )
     parser.add_argument("--config", required=True, help="Path to data.yaml")
     args = parser.parse_args()
 
@@ -70,11 +72,15 @@ def main() -> None:
     df = load_activities(activities_path)
     print(f"  {len(df)} IC50/Ki/Kd '=' rows")
 
-    targets_df = pd.read_parquet(targets_path)[["target_chembl_id", "uniprot_id", "target_name", "sequence"]]
+    targets_df = pd.read_parquet(targets_path)[
+        ["target_chembl_id", "uniprot_id", "target_name", "sequence"]
+    ]
     df = df.merge(targets_df, on="target_chembl_id", how="left")
     n_no_uniprot = df["uniprot_id"].isna().sum()
     if n_no_uniprot:
-        missing_targets = sorted(df[df["uniprot_id"].isna()]["target_chembl_id"].unique().tolist())
+        missing_targets = sorted(
+            df[df["uniprot_id"].isna()]["target_chembl_id"].unique().tolist()
+        )
         raise RuntimeError(
             f"{n_no_uniprot} activity rows have no uniprot_id after joining targets.parquet. "
             f"Affected target_chembl_ids: {missing_targets}"
@@ -87,9 +93,13 @@ def main() -> None:
         n_before = len(df)
         df = df[df["uniprot_id"].isin(split_map)].copy()
         n_dropped = n_before - len(df)
-        print(f"  Dropped {n_dropped} rows whose uniprot_id was not in the split file → {len(df)} remaining")
+        print(
+            f"  Dropped {n_dropped} rows whose uniprot_id was not in the split file → {len(df)} remaining"
+        )
         df["split"] = df["uniprot_id"].map(split_map)
-        print(f"  Split counts: { {s: int((df['split'] == s).sum()) for s in sorted(df['split'].unique())} }")
+        print(
+            f"  Split counts: { {s: int((df['split'] == s).sum()) for s in sorted(df['split'].unique())} }"
+        )
 
     # ------------------------------------------------------------------
     # Generate fingerprints from compounds
@@ -109,7 +119,9 @@ def main() -> None:
         n_jobs=n_jobs,
     )
     skipped = len(compounds_df) - len(fp_names)
-    print(f"  Fingerprints: {fp_matrix.shape} ({skipped} molecules skipped due to parse failure)")
+    print(
+        f"  Fingerprints: {fp_matrix.shape} ({skipped} molecules skipped due to parse failure)"
+    )
 
     fp_size: int = fp_matrix.shape[1]
 
@@ -123,7 +135,9 @@ def main() -> None:
         n_jobs=n_jobs,
     )
     skipped_props = len(compounds_df) - len(prop_names)
-    print(f"  Mol properties: {raw_props.shape} ({skipped_props} molecules skipped due to parse failure)")
+    print(
+        f"  Mol properties: {raw_props.shape} ({skipped_props} molecules skipped due to parse failure)"
+    )
 
     print("\nNormalising mol properties (fit on training compounds only)...")
     train_compound_ids = set(df[df["split"] == "train"]["ligand_chembl_id"].unique())
@@ -132,11 +146,15 @@ def main() -> None:
         dtype=np.int64,
     )
     if len(train_prop_indices) == 0:
-        raise RuntimeError("No training compounds found for normalisation — check your split column.")
+        raise RuntimeError(
+            "No training compounds found for normalisation — check your split column."
+        )
     train_mean = raw_props[train_prop_indices].mean(axis=0).astype(np.float32)
     train_std = raw_props[train_prop_indices].std(axis=0).astype(np.float32)
     normed_props = normalise_mol_properties(raw_props, mean=train_mean, std=train_std)
-    print(f"  Normalised using {len(train_prop_indices)} training compounds to fit scaler")
+    print(
+        f"  Normalised using {len(train_prop_indices)} training compounds to fit scaler"
+    )
 
     # ------------------------------------------------------------------
     # Jointly filter to compounds with both fingerprint and mol properties,
@@ -150,7 +168,9 @@ def main() -> None:
     if n_fp_only:
         print(f"  Dropped {n_fp_only} compounds with fingerprint but no mol properties")
     if n_prop_only:
-        print(f"  Dropped {n_prop_only} compounds with mol properties but no fingerprint")
+        print(
+            f"  Dropped {n_prop_only} compounds with mol properties but no fingerprint"
+        )
     print(f"  {len(common)} compounds retained with both representations")
 
     keep_mask = np.array([n in common for n in fp_names])
@@ -176,7 +196,9 @@ def main() -> None:
 
     n_before = len(df)
     df = df[df["ligand_chembl_id"].isin(fp_name_to_idx)].copy()
-    print(f"  Dropped {n_before - len(df)} activity rows with no compound representation → {len(df)} remaining")
+    print(
+        f"  Dropped {n_before - len(df)} activity rows with no compound representation → {len(df)} remaining"
+    )
 
     # ------------------------------------------------------------------
     # Build target index from train uniprot_ids and map out-of-vocabulary (OOV)
@@ -192,25 +214,31 @@ def main() -> None:
     print("  Saved target_index.json")
 
     non_train = df[df["split"] != "train"]
-    oov = sorted({
-        uid for uid in non_train["uniprot_id"].unique()
-        if uid not in index
-    })
+    oov = sorted({uid for uid in non_train["uniprot_id"].unique() if uid not in index})
 
     oov_mapping: dict[str, str] = {}
     if oov:
-        print(f"\nAuto-mapping {len(oov)} OOV uniprot_id(s) by sequence similarity (BLOSUM62)...")
+        print(
+            f"\nAuto-mapping {len(oov)} OOV uniprot_id(s) by sequence similarity (BLOSUM62)..."
+        )
         sequences: dict[str, str | None] = dict(
-            zip(targets_df["uniprot_id"], targets_df.get("sequence", [None] * len(targets_df)))
+            zip(
+                targets_df["uniprot_id"],
+                targets_df.get("sequence", [None] * len(targets_df)),
+            )
         )
         oov_mapping = find_closest_training_targets(
-            oov, list(index.keys()), sequences, n_jobs=n_jobs,
-            train_counts=train_counts, min_train_datapoints=min_train_datapoints,
+            oov,
+            list(index.keys()),
+            sequences,
+            n_jobs=n_jobs,
+            train_counts=train_counts,
+            min_train_datapoints=min_train_datapoints,
         )
 
         with open(out_dir / "oov_target_mapping.json", "w") as f:
             json.dump(oov_mapping, f, indent=2)
-        print(f"  Saved oov_target_mapping.json")
+        print("  Saved oov_target_mapping.json")
 
     # ------------------------------------------------------------------
     # Post processing and saving
@@ -223,8 +251,8 @@ def main() -> None:
 
     split_defs = {
         "train": df[df["split"] == "train"].copy(),
-        "val":   df[df["split"].isin(val_splits)].copy(),
-        "test":  df[df["split"] == "test"].copy(),
+        "val": df[df["split"].isin(val_splits)].copy(),
+        "test": df[df["split"] == "test"].copy(),
     }
 
     for split_name, split_df in split_defs.items():
@@ -244,14 +272,21 @@ def main() -> None:
             out_path,
             fp_indices=np.array(fp_indices, dtype=np.int64),
             target_indices=np.array(target_indices, dtype=np.int64),
-            standard_type_indices=np.array(split_df["standard_type_idx"].tolist(), dtype=np.int64),
+            standard_type_indices=np.array(
+                split_df["standard_type_idx"].tolist(), dtype=np.int64
+            ),
             labels=split_df["pchembl_value_filled"].values.astype(np.float32),
             assay_ids=np.array(split_df["assay_id_for_eval"].tolist()),
             ligand_ids=np.array(split_df["ligand_chembl_id"].tolist()),
         )
         print(f"  Saved {out_path.name}: {len(fp_indices)} samples")
 
-    meta = {"n_targets": len(index), "n_standard_types": len(STANDARD_TYPE_INDEX), "fp_size": fp_size, "fp_type": fp_type}
+    meta = {
+        "n_targets": len(index),
+        "n_standard_types": len(STANDARD_TYPE_INDEX),
+        "fp_size": fp_size,
+        "fp_type": fp_type,
+    }
     with open(out_dir / "meta.json", "w") as f:
         json.dump(meta, f)
     print(f"\nSaved meta.json: {meta}")

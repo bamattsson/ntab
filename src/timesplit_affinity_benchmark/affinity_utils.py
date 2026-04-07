@@ -87,13 +87,21 @@ def add_pchembl_columns(df: pd.DataFrame) -> pd.DataFrame:
     result = df.copy()
 
     pchembl_pos = result.columns.get_loc("pchembl_value")
-    result.insert(pchembl_pos, "pchembl_value_filled", result["pchembl_value"].fillna(
-        result.apply(compute_pchembl_filled, axis=1)
-    ).astype(float))
+    result.insert(
+        pchembl_pos,
+        "pchembl_value_filled",
+        result["pchembl_value"]
+        .fillna(result.apply(compute_pchembl_filled, axis=1))
+        .astype(float),
+    )
     result = result.drop(columns=["pchembl_value"])
 
     relation_pos = result.columns.get_loc("standard_relation")
-    result.insert(relation_pos, "pchembl_relation", result["standard_relation"].apply(invert_relation))
+    result.insert(
+        relation_pos,
+        "pchembl_relation",
+        result["standard_relation"].apply(invert_relation),
+    )
     result = result.drop(columns=["standard_relation"])
 
     return result

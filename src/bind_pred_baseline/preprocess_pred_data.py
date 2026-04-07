@@ -71,7 +71,8 @@ def preprocess_for_inference(
             oov_mapping = json.load(f)
 
     unresolvable = sorted(
-        uid for uid in df["uniprot_id"].unique()
+        uid
+        for uid in df["uniprot_id"].unique()
         if uid not in target_index and oov_mapping.get(uid, uid) not in target_index
     )
     if unresolvable:
@@ -126,7 +127,9 @@ def preprocess_for_inference(
     )
     target_indices = np.array(
         resolve_target_ids(
-            df_filtered["uniprot_id"].tolist(), target_index, mapping=oov_mapping or None
+            df_filtered["uniprot_id"].tolist(),
+            target_index,
+            mapping=oov_mapping or None,
         ),
         dtype=np.int64,
     )
@@ -134,6 +137,11 @@ def preprocess_for_inference(
         [STANDARD_TYPE_INDEX[st] for st in df_filtered["standard_type"]], dtype=np.int64
     )
 
-    return fp_matrix_kept, props_matrix, fp_indices, target_indices, std_type_indices, df_filtered
-
-
+    return (
+        fp_matrix_kept,
+        props_matrix,
+        fp_indices,
+        target_indices,
+        std_type_indices,
+        df_filtered,
+    )

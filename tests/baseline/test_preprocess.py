@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import pytest
 from pathlib import Path
@@ -17,18 +16,19 @@ from bind_pred_baseline.preprocess_utils import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_activities(**overrides) -> pd.DataFrame:
     """Minimal activities DataFrame with all required columns and sensible defaults."""
     base = {
         "target_chembl_id": ["T1", "T1", "T2", "T2"],
-        "assay_chembl_id":  ["A1", "A1", "A2", "A2"],
+        "assay_chembl_id": ["A1", "A1", "A2", "A2"],
         "ligand_chembl_id": ["L1", "L2", "L1", "L2"],
-        "standard_type":    ["IC50", "IC50", "IC50", "IC50"],
-        "pchembl_relation": ["=",    "=",    "=",    "="],
+        "standard_type": ["IC50", "IC50", "IC50", "IC50"],
+        "pchembl_relation": ["=", "=", "=", "="],
         "pchembl_value_filled": [7.0, 6.0, 5.0, 4.0],
-        "split":            ["train", "train", "val_novel", "val_novel"],
-        "canonical_smiles": ["C",    "CC",   "C",    "CC"],
-        "mutation":         [None, None, None, None],
+        "split": ["train", "train", "val_novel", "val_novel"],
+        "canonical_smiles": ["C", "CC", "C", "CC"],
+        "mutation": [None, None, None, None],
     }
     base.update(overrides)
     return pd.DataFrame(base)
@@ -43,6 +43,7 @@ def _write_parquet(df: pd.DataFrame, path: Path) -> Path:
 # ---------------------------------------------------------------------------
 # load_activities
 # ---------------------------------------------------------------------------
+
 
 class TestLoadActivities:
     def test_keeps_ic50_ki_kd_rows(self, tmp_path: Path) -> None:
@@ -95,6 +96,7 @@ class TestLoadActivities:
 
     def test_filters_out_nan_pchembl(self, tmp_path: Path) -> None:
         import math
+
         df = _make_activities(pchembl_value_filled=[7.0, float("nan"), 5.0, 4.0])
         path = _write_parquet(df, tmp_path)
         result = load_activities(path)
@@ -106,71 +108,85 @@ class TestLoadActivities:
 # average_duplicates
 # ---------------------------------------------------------------------------
 
+
 class TestAverageDuplicates:
     def test_averages_pchembl_per_target_ligand(self) -> None:
-        df = pd.DataFrame({
-            "target_chembl_id": ["T1", "T1", "T1"],
-            "ligand_chembl_id": ["L1", "L1", "L1"],
-            "standard_type":    ["IC50", "IC50", "IC50"],
-            "assay_chembl_id":  ["A1", "A2", "A3"],
-            "pchembl_value_filled": [6.0, 8.0, 7.0],
-            "split": ["train", "train", "train"],
-        })
+        df = pd.DataFrame(
+            {
+                "target_chembl_id": ["T1", "T1", "T1"],
+                "ligand_chembl_id": ["L1", "L1", "L1"],
+                "standard_type": ["IC50", "IC50", "IC50"],
+                "assay_chembl_id": ["A1", "A2", "A3"],
+                "pchembl_value_filled": [6.0, 8.0, 7.0],
+                "split": ["train", "train", "train"],
+            }
+        )
         result = average_duplicates(df)
         assert len(result) == 1
         assert pytest.approx(result.iloc[0]["pchembl_value_filled"]) == 7.0
 
     def test_single_measurement_unchanged(self) -> None:
-        df = pd.DataFrame({
-            "target_chembl_id": ["T1"],
-            "ligand_chembl_id": ["L1"],
-            "standard_type":    ["IC50"],
-            "assay_chembl_id":  ["A1"],
-            "pchembl_value_filled": [6.5],
-            "split": ["train"],
-        })
+        df = pd.DataFrame(
+            {
+                "target_chembl_id": ["T1"],
+                "ligand_chembl_id": ["L1"],
+                "standard_type": ["IC50"],
+                "assay_chembl_id": ["A1"],
+                "pchembl_value_filled": [6.5],
+                "split": ["train"],
+            }
+        )
         result = average_duplicates(df)
         assert len(result) == 1
         assert pytest.approx(result.iloc[0]["pchembl_value_filled"]) == 6.5
 
     def test_returns_one_row_per_target_ligand_type_triple(self) -> None:
-        df = pd.DataFrame({
-            "target_chembl_id": ["T1", "T1", "T2", "T2"],
-            "ligand_chembl_id": ["L1", "L1", "L1", "L1"],
-            "standard_type":    ["IC50", "IC50", "IC50", "IC50"],
-            "assay_chembl_id":  ["A1", "A2", "A1", "A3"],
-            "pchembl_value_filled": [6.0, 8.0, 5.0, 7.0],
-            "split": ["train"] * 4,
-        })
+        df = pd.DataFrame(
+            {
+                "target_chembl_id": ["T1", "T1", "T2", "T2"],
+                "ligand_chembl_id": ["L1", "L1", "L1", "L1"],
+                "standard_type": ["IC50", "IC50", "IC50", "IC50"],
+                "assay_chembl_id": ["A1", "A2", "A1", "A3"],
+                "pchembl_value_filled": [6.0, 8.0, 5.0, 7.0],
+                "split": ["train"] * 4,
+            }
+        )
         result = average_duplicates(df)
         assert len(result) == 2
         assert set(zip(result["target_chembl_id"], result["ligand_chembl_id"])) == {
-            ("T1", "L1"), ("T2", "L1")
+            ("T1", "L1"),
+            ("T2", "L1"),
         }
 
     def test_different_pairs_not_mixed(self) -> None:
-        df = pd.DataFrame({
-            "target_chembl_id": ["T1", "T2"],
-            "ligand_chembl_id": ["L1", "L1"],
-            "standard_type":    ["IC50", "IC50"],
-            "assay_chembl_id":  ["A1", "A2"],
-            "pchembl_value_filled": [6.0, 9.0],
-            "split": ["train", "train"],
-        })
-        result = average_duplicates(df).set_index(["target_chembl_id", "ligand_chembl_id"])
+        df = pd.DataFrame(
+            {
+                "target_chembl_id": ["T1", "T2"],
+                "ligand_chembl_id": ["L1", "L1"],
+                "standard_type": ["IC50", "IC50"],
+                "assay_chembl_id": ["A1", "A2"],
+                "pchembl_value_filled": [6.0, 9.0],
+                "split": ["train", "train"],
+            }
+        )
+        result = average_duplicates(df).set_index(
+            ["target_chembl_id", "ligand_chembl_id"]
+        )
         assert pytest.approx(result.loc[("T1", "L1"), "pchembl_value_filled"]) == 6.0
         assert pytest.approx(result.loc[("T2", "L1"), "pchembl_value_filled"]) == 9.0
 
     def test_preserves_all_columns_after_averaging(self) -> None:
-        df = pd.DataFrame({
-            "target_chembl_id": ["T1", "T1"],
-            "ligand_chembl_id": ["L1", "L1"],
-            "standard_type":    ["IC50", "IC50"],
-            "assay_chembl_id":  ["A1", "A2"],
-            "pchembl_value_filled": [6.0, 8.0],
-            "split": ["train", "train"],
-            "uniprot_id": ["U1", "U1"],
-        })
+        df = pd.DataFrame(
+            {
+                "target_chembl_id": ["T1", "T1"],
+                "ligand_chembl_id": ["L1", "L1"],
+                "standard_type": ["IC50", "IC50"],
+                "assay_chembl_id": ["A1", "A2"],
+                "pchembl_value_filled": [6.0, 8.0],
+                "split": ["train", "train"],
+                "uniprot_id": ["U1", "U1"],
+            }
+        )
         result = average_duplicates(df)
         assert len(result) == 1
         assert "uniprot_id" in result.columns
@@ -178,28 +194,32 @@ class TestAverageDuplicates:
         assert "assay_chembl_id" in result.columns
 
     def test_non_train_rows_are_not_averaged(self) -> None:
-        df = pd.DataFrame({
-            "target_chembl_id": ["T1", "T1"],
-            "ligand_chembl_id": ["L1", "L1"],
-            "standard_type":    ["IC50", "IC50"],
-            "assay_chembl_id":  ["A1", "A2"],
-            "pchembl_value_filled": [6.0, 8.0],
-            "split": ["val_novel", "val_novel"],
-        })
+        df = pd.DataFrame(
+            {
+                "target_chembl_id": ["T1", "T1"],
+                "ligand_chembl_id": ["L1", "L1"],
+                "standard_type": ["IC50", "IC50"],
+                "assay_chembl_id": ["A1", "A2"],
+                "pchembl_value_filled": [6.0, 8.0],
+                "split": ["val_novel", "val_novel"],
+            }
+        )
         result = average_duplicates(df)
         assert len(result) == 2
         assert set(result["pchembl_value_filled"].tolist()) == {6.0, 8.0}
 
     def test_ic50_and_ki_for_same_target_ligand_averaged_separately(self) -> None:
         # IC50 and Ki for the same (T1, L1) should produce two rows, not one
-        df = pd.DataFrame({
-            "target_chembl_id": ["T1", "T1", "T1", "T1"],
-            "ligand_chembl_id": ["L1", "L1", "L1", "L1"],
-            "standard_type":    ["IC50", "IC50", "Ki", "Ki"],
-            "assay_chembl_id":  ["A1", "A2", "A3", "A4"],
-            "pchembl_value_filled": [6.0, 8.0, 5.0, 9.0],
-            "split": ["train"] * 4,
-        })
+        df = pd.DataFrame(
+            {
+                "target_chembl_id": ["T1", "T1", "T1", "T1"],
+                "ligand_chembl_id": ["L1", "L1", "L1", "L1"],
+                "standard_type": ["IC50", "IC50", "Ki", "Ki"],
+                "assay_chembl_id": ["A1", "A2", "A3", "A4"],
+                "pchembl_value_filled": [6.0, 8.0, 5.0, 9.0],
+                "split": ["train"] * 4,
+            }
+        )
         result = average_duplicates(df)
         assert len(result) == 2
         ic50_row = result[result["standard_type"] == "IC50"].iloc[0]
@@ -212,31 +232,42 @@ class TestAverageDuplicates:
 # load_split_from_file
 # ---------------------------------------------------------------------------
 
+
 class TestLoadSplitFromFile:
     def _write_split_csv(self, tmp_path: Path, rows: list[tuple[str, str]]) -> Path:
         fpath = tmp_path / "split.csv"
-        pd.DataFrame(rows, columns=["uniprot_id", "data_split"]).to_csv(fpath, index=False)
+        pd.DataFrame(rows, columns=["uniprot_id", "data_split"]).to_csv(
+            fpath, index=False
+        )
         return fpath
 
     def test_returns_correct_mapping(self, tmp_path: Path) -> None:
-        path = self._write_split_csv(tmp_path, [("U1", "train"), ("U2", "val"), ("U3", "test")])
+        path = self._write_split_csv(
+            tmp_path, [("U1", "train"), ("U2", "val"), ("U3", "test")]
+        )
         result = load_split_from_file(path)
         assert result == {"U1": "train", "U2": "val", "U3": "test"}
 
     def test_all_split_values_preserved(self, tmp_path: Path) -> None:
-        path = self._write_split_csv(tmp_path, [("U1", "train"), ("U2", "val"), ("U3", "test")])
+        path = self._write_split_csv(
+            tmp_path, [("U1", "train"), ("U2", "val"), ("U3", "test")]
+        )
         result = load_split_from_file(path)
         assert set(result.values()) == {"train", "val", "test"}
 
     def test_raises_on_missing_uniprot_id_column(self, tmp_path: Path) -> None:
         fpath = tmp_path / "bad.csv"
-        pd.DataFrame({"wrong_col": ["U1"], "data_split": ["train"]}).to_csv(fpath, index=False)
+        pd.DataFrame({"wrong_col": ["U1"], "data_split": ["train"]}).to_csv(
+            fpath, index=False
+        )
         with pytest.raises(ValueError, match="uniprot_id"):
             load_split_from_file(fpath)
 
     def test_raises_on_missing_data_split_column(self, tmp_path: Path) -> None:
         fpath = tmp_path / "bad.csv"
-        pd.DataFrame({"uniprot_id": ["U1"], "wrong_col": ["train"]}).to_csv(fpath, index=False)
+        pd.DataFrame({"uniprot_id": ["U1"], "wrong_col": ["train"]}).to_csv(
+            fpath, index=False
+        )
         with pytest.raises(ValueError, match="data_split"):
             load_split_from_file(fpath)
 
@@ -250,6 +281,7 @@ class TestLoadSplitFromFile:
 # ---------------------------------------------------------------------------
 # build_target_index
 # ---------------------------------------------------------------------------
+
 
 class TestBuildTargetIndex:
     def test_assigns_unique_integer_to_each_target(self) -> None:
@@ -274,6 +306,7 @@ class TestBuildTargetIndex:
 # ---------------------------------------------------------------------------
 # resolve_target_ids
 # ---------------------------------------------------------------------------
+
 
 class TestResolveTargetIds:
     def _index(self) -> dict[str, int]:
@@ -311,6 +344,7 @@ class TestResolveTargetIds:
 # find_closest_training_targets
 # ---------------------------------------------------------------------------
 
+
 class TestFindClosestTrainingTargets:
     def test_identical_sequence_maps_to_itself(self) -> None:
         seq = "ACDEFGHIKLMNPQRSTVWY"
@@ -328,9 +362,9 @@ class TestFindClosestTrainingTargets:
             oov_ids=["OOV"],
             train_ids=["TR_A", "TR_B"],
             sequences={
-                "OOV":  seq,
-                "TR_A": seq,                  # identical
-                "TR_B": "XXXXXXXXXXXXXXXX",   # no overlap
+                "OOV": seq,
+                "TR_A": seq,  # identical
+                "TR_B": "XXXXXXXXXXXXXXXX",  # no overlap
             },
         )
         assert result["OOV"] == "TR_A"
@@ -342,8 +376,8 @@ class TestFindClosestTrainingTargets:
             sequences={
                 "OOV_1": "AAAAAAAAAA",
                 "OOV_2": "BBBBBBBBBB",
-                "TR_A":  "AAAAAAAAAA",
-                "TR_B":  "BBBBBBBBBB",
+                "TR_A": "AAAAAAAAAA",
+                "TR_B": "BBBBBBBBBB",
             },
         )
         assert set(result.keys()) == {"OOV_1", "OOV_2"}
@@ -397,7 +431,9 @@ class TestFindClosestTrainingTargets:
         )
         captured = capsys.readouterr()
         assert "OOV" in captured.out
-        assert "non-standard" in captured.out.lower() or "sanitiz" in captured.out.lower()
+        assert (
+            "non-standard" in captured.out.lower() or "sanitiz" in captured.out.lower()
+        )
 
     def test_min_train_datapoints_filters_ineligible_targets(self) -> None:
         # TR_A has only 1 datapoint (below threshold), TR_B has 100 → must pick TR_B
@@ -443,8 +479,8 @@ class TestFindClosestTrainingTargets:
             sequences={
                 "OOV_1": "AAAAAAAAAA",
                 "OOV_2": "CCCCCCCCCC",
-                "TR_A":  "AAAAAAAAAA",
-                "TR_B":  "CCCCCCCCCC",
+                "TR_A": "AAAAAAAAAA",
+                "TR_B": "CCCCCCCCCC",
             },
             n_jobs=1,
         )
@@ -454,8 +490,8 @@ class TestFindClosestTrainingTargets:
             sequences={
                 "OOV_1": "AAAAAAAAAA",
                 "OOV_2": "CCCCCCCCCC",
-                "TR_A":  "AAAAAAAAAA",
-                "TR_B":  "CCCCCCCCCC",
+                "TR_A": "AAAAAAAAAA",
+                "TR_B": "CCCCCCCCCC",
             },
             n_jobs=2,
         )

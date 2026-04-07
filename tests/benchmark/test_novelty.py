@@ -21,16 +21,20 @@ def _make_fixtures() -> tuple[pd.DataFrame, np.ndarray, dict[str, int]]:
     - "C": cpd_earliest_year=2025 (not-novel test),  fp = bits 0-4 (identical to A)
     - "D": cpd_earliest_year=2023 (val),             fp = bits 200-202 (disjoint from A)
     """
-    compounds = pd.DataFrame({
-        "chembl_id": ["A", "B", "C", "D"],
-        "cpd_earliest_year": [2020, 2025, 2025, 2023],
-    })
-    fp_matrix = np.array([
-        _make_fp([0, 1, 2, 3, 4]),           # A
-        _make_fp([100, 101, 102, 103, 104]),  # B — disjoint from A
-        _make_fp([0, 1, 2, 3, 4]),            # C — identical to A
-        _make_fp([200, 201, 202]),            # D — disjoint from A
-    ])
+    compounds = pd.DataFrame(
+        {
+            "chembl_id": ["A", "B", "C", "D"],
+            "cpd_earliest_year": [2020, 2025, 2025, 2023],
+        }
+    )
+    fp_matrix = np.array(
+        [
+            _make_fp([0, 1, 2, 3, 4]),  # A
+            _make_fp([100, 101, 102, 103, 104]),  # B — disjoint from A
+            _make_fp([0, 1, 2, 3, 4]),  # C — identical to A
+            _make_fp([200, 201, 202]),  # D — disjoint from A
+        ]
+    )
     fp_index = {"A": 0, "B": 1, "C": 2, "D": 3}
     return compounds, fp_matrix, fp_index
 
@@ -54,7 +58,9 @@ class TestComputeNoveltyForCutoff:
             threshold=0.35,
         )
         # Columns and index
-        assert {"is_novel_2024", "max_sim_pre_2024", "most_sim_cpd_pre_2024"}.issubset(result.columns)
+        assert {"is_novel_2024", "max_sim_pre_2024", "most_sim_cpd_pre_2024"}.issubset(
+            result.columns
+        )
         assert result.index.name == "chembl_id"
         assert set(result.index) == {"A", "B", "C", "D"}
 
@@ -117,7 +123,7 @@ class TestComputeNoveltyForCutoff:
             fp_matrix=fp_matrix,
             threshold=0.35,
         )
-        assert pd.isna(result.loc["A", "is_novel_2023"])   # reference → NaN
-        assert result.loc["D", "is_novel_2023"] == True    # disjoint from A → novel
-        assert result.loc["B", "is_novel_2023"] == True    # disjoint from A → novel
-        assert result.loc["C", "is_novel_2023"] == False   # identical to A → not novel
+        assert pd.isna(result.loc["A", "is_novel_2023"])  # reference → NaN
+        assert result.loc["D", "is_novel_2023"] == True  # disjoint from A → novel
+        assert result.loc["B", "is_novel_2023"] == True  # disjoint from A → novel
+        assert result.loc["C", "is_novel_2023"] == False  # identical to A → not novel

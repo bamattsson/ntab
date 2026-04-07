@@ -5,10 +5,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 import torch
 
-from bind_pred_baseline.constants import FP_SIZE, STANDARD_TYPE_INDEX
+from bind_pred_baseline.constants import FP_SIZE
 from bind_pred_baseline.model import AffinityModel
 
 
@@ -26,7 +25,12 @@ def _make_preproc_dir(tmp_path: Path, n_targets: int = 5) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     target_index = {f"P{i:05d}": i for i in range(n_targets)}
     (d / "target_index.json").write_text(json.dumps(target_index))
-    meta = {"n_targets": n_targets, "n_standard_types": 3, "fp_size": FP_SIZE, "fp_type": "binary"}
+    meta = {
+        "n_targets": n_targets,
+        "n_standard_types": 3,
+        "fp_size": FP_SIZE,
+        "fp_type": "binary",
+    }
     (d / "meta.json").write_text(json.dumps(meta))
     n_features = len(PROP_FEATURE_NAMES)
     np.savez(
@@ -40,7 +44,10 @@ def _make_preproc_dir(tmp_path: Path, n_targets: int = 5) -> Path:
 
 def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
     import lightning
-    model = AffinityModel(n_targets=n_targets, n_standard_types=3, hidden_dim=32, target_embed_dim=8)
+
+    model = AffinityModel(
+        n_targets=n_targets, n_standard_types=3, hidden_dim=32, target_embed_dim=8
+    )
     torch.save(
         {
             "epoch": 0,
@@ -56,7 +63,9 @@ def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
     )
 
 
-def _make_input_csv(tmp_path: Path, rows: list[dict], filename: str = "input.csv") -> Path:
+def _make_input_csv(
+    tmp_path: Path, rows: list[dict], filename: str = "input.csv"
+) -> Path:
     csv_path = tmp_path / filename
     pd.DataFrame(rows).to_csv(csv_path, index=False)
     return csv_path
@@ -70,7 +79,11 @@ def _make_input_csv(tmp_path: Path, rows: list[dict], filename: str = "input.csv
 class TestLoadCsvAsStandardDf:
     def _make_rows(self, n: int = 3) -> list[dict]:
         return [
-            {"ligand_name": f"mol_{i}", "uniprot_id": f"P{i:05d}", "smiles": _SMILES[i % len(_SMILES)]}
+            {
+                "ligand_name": f"mol_{i}",
+                "uniprot_id": f"P{i:05d}",
+                "smiles": _SMILES[i % len(_SMILES)],
+            }
             for i in range(n)
         ]
 
@@ -86,7 +99,14 @@ class TestLoadCsvAsStandardDf:
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv)
-        for col in ["ligand_name", "smiles", "uniprot_id", "standard_type", "assay_id", "split"]:
+        for col in [
+            "ligand_name",
+            "smiles",
+            "uniprot_id",
+            "standard_type",
+            "assay_id",
+            "split",
+        ]:
             assert col in df.columns, f"Missing column: {col}"
 
     def test_default_standard_type_ic50(self, tmp_path: Path) -> None:
@@ -107,8 +127,18 @@ class TestLoadCsvAsStandardDf:
         from bind_pred_baseline.predict_on_csv import load_csv_as_standard_df
 
         rows = [
-            {"ligand_name": "mol_0", "uniprot_id": "P00000", "smiles": "c1ccccc1", "standard_type": "Ki"},
-            {"ligand_name": "mol_1", "uniprot_id": "P00001", "smiles": "CCO", "standard_type": "Kd"},
+            {
+                "ligand_name": "mol_0",
+                "uniprot_id": "P00000",
+                "smiles": "c1ccccc1",
+                "standard_type": "Ki",
+            },
+            {
+                "ligand_name": "mol_1",
+                "uniprot_id": "P00001",
+                "smiles": "CCO",
+                "standard_type": "Kd",
+            },
         ]
         csv = _make_input_csv(tmp_path, rows)
         df = load_csv_as_standard_df(csv, default_standard_type="IC50")
@@ -132,7 +162,11 @@ class TestLoadCsvAsStandardDf:
         from bind_pred_baseline.predict_on_csv import load_csv_as_standard_df
 
         rows = [
-            {"ligand_name": "mol_0", "uniprot_id": "P00000", "canonical_smiles": "c1ccccc1"},
+            {
+                "ligand_name": "mol_0",
+                "uniprot_id": "P00000",
+                "canonical_smiles": "c1ccccc1",
+            },
         ]
         csv = _make_input_csv(tmp_path, rows)
         df = load_csv_as_standard_df(csv)
@@ -150,8 +184,18 @@ class TestLoadCsvAsStandardDf:
         from bind_pred_baseline.predict_on_csv import load_csv_as_standard_df
 
         rows = [
-            {"ligand_name": "mol_0", "uniprot_id": "P00000", "smiles": "c1ccccc1", "pchembl_value": 7.5},
-            {"ligand_name": "mol_1", "uniprot_id": "P00001", "smiles": "CCO", "pchembl_value": 6.2},
+            {
+                "ligand_name": "mol_0",
+                "uniprot_id": "P00000",
+                "smiles": "c1ccccc1",
+                "pchembl_value": 7.5,
+            },
+            {
+                "ligand_name": "mol_1",
+                "uniprot_id": "P00001",
+                "smiles": "CCO",
+                "pchembl_value": 6.2,
+            },
         ]
         csv = _make_input_csv(tmp_path, rows)
         df = load_csv_as_standard_df(csv)
@@ -181,7 +225,11 @@ class TestPredictOnCsvIntegration:
         ckpt_path = tmp_path / "model.ckpt"
         _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
         rows = [
-            {"ligand_name": f"mol_{i}", "uniprot_id": f"P{i % n_targets:05d}", "smiles": _SMILES[i % len(_SMILES)]}
+            {
+                "ligand_name": f"mol_{i}",
+                "uniprot_id": f"P{i % n_targets:05d}",
+                "smiles": _SMILES[i % len(_SMILES)],
+            }
             for i in range(5)
         ]
         csv_path = _make_input_csv(tmp_path, rows)
@@ -270,7 +318,9 @@ class TestPredictOnCsvIntegration:
         df = pd.read_csv(out_csv)
         assert len(df) == n_input
 
-    def test_metrics_printed_when_pchembl_value_in_input(self, tmp_path: Path, capsys) -> None:
+    def test_metrics_printed_when_pchembl_value_in_input(
+        self, tmp_path: Path, capsys
+    ) -> None:
         from bind_pred_baseline.predict_on_csv import predict_on_csv
 
         n_targets = 3
@@ -292,7 +342,9 @@ class TestPredictOnCsvIntegration:
         out = capsys.readouterr().out
         assert "Pearson" in out
 
-    def test_pchembl_value_preserved_in_output_when_in_input(self, tmp_path: Path) -> None:
+    def test_pchembl_value_preserved_in_output_when_in_input(
+        self, tmp_path: Path
+    ) -> None:
         from bind_pred_baseline.predict_on_csv import predict_on_csv
 
         n_targets = 3

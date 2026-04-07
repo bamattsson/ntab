@@ -47,17 +47,21 @@ def assign_splits(
     mask_val = (year >= year_val_start) & (year < year_test_start)
     if mask_val.any():
         # .eq(True) returns a proper bool series: True → True, False/NA → False
-        is_novel_val = result["ligand_chembl_id"].map(
-            compounds_df[f"is_novel_{year_val_start}"]
-        ).eq(True)
+        is_novel_val = (
+            result["ligand_chembl_id"]
+            .map(compounds_df[f"is_novel_{year_val_start}"])
+            .eq(True)
+        )
         split[mask_val & is_novel_val] = "val_novel"
         split[mask_val & ~is_novel_val] = "val_not_novel"
 
     mask_test = year >= year_test_start
     if mask_test.any():
-        is_novel_test = result["ligand_chembl_id"].map(
-            compounds_df[f"is_novel_{year_test_start}"]
-        ).eq(True)
+        is_novel_test = (
+            result["ligand_chembl_id"]
+            .map(compounds_df[f"is_novel_{year_test_start}"])
+            .eq(True)
+        )
         split[mask_test & is_novel_test] = "test"
         split[mask_test & ~is_novel_test] = "discard_not_novel"
 

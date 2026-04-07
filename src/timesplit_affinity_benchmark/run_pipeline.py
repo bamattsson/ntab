@@ -19,8 +19,11 @@ from timesplit_affinity_benchmark.mol_fingerprints import compute_ecfp4_fingerpr
 from timesplit_affinity_benchmark.novelty import compute_novelty_for_cutoff
 from timesplit_affinity_benchmark.split_assigner import assign_splits
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate the timesplit affinity benchmark.")
+    parser = argparse.ArgumentParser(
+        description="Generate the timesplit affinity benchmark."
+    )
     parser.add_argument("--config", required=True, help="Path to config.yaml")
     args = parser.parse_args()
 
@@ -35,7 +38,9 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("Step 1: Querying ChEMBL...")
     cr = config.chembl_requester
-    requester = ChEMBLRequester(host=cr.host, user=cr.user, password=cr.password, dbname=cr.dbname)
+    requester = ChEMBLRequester(
+        host=cr.host, user=cr.user, password=cr.password, dbname=cr.dbname
+    )
 
     activities_df = pd.DataFrame(requester.get_all_single_protein_activity_data())
     print(f"  Activities raw: {activities_df.shape}")
@@ -43,7 +48,9 @@ def main() -> None:
     if config.pipeline.activity_limit is not None:
         # Use this when debugging to make runs faster
         n = min(config.pipeline.activity_limit, len(activities_df))
-        activities_df = activities_df.sample(n=n, random_state=42).reset_index(drop=True)
+        activities_df = activities_df.sample(n=n, random_state=42).reset_index(
+            drop=True
+        )
         print(f"  Activities after limit: {activities_df.shape}")
 
     compounds_df = pd.DataFrame(requester.get_chembl_id_to_smiles())
@@ -52,26 +59,36 @@ def main() -> None:
 
     # Filter compounds to only those referenced by the (possibly limited) activities
     relevant_ids = set(activities_df["ligand_chembl_id"].dropna())
-    compounds_df = compounds_df[compounds_df["chembl_id"].isin(relevant_ids)].reset_index(drop=True)
+    compounds_df = compounds_df[
+        compounds_df["chembl_id"].isin(relevant_ids)
+    ].reset_index(drop=True)
 
     print(f"  Compounds (filtered to activities): {compounds_df.shape}")
 
     # Drop compounds with no valid SMILES (null within compounds_df, or absent from
     # compound_structures entirely) and remove their activities.
-    compounds_df = compounds_df[compounds_df["canonical_smiles"].notna()].reset_index(drop=True)
+    compounds_df = compounds_df[compounds_df["canonical_smiles"].notna()].reset_index(
+        drop=True
+    )
     valid_ids = set(compounds_df["chembl_id"])
     n_before_acts = len(activities_df)
-    activities_df = activities_df[activities_df["ligand_chembl_id"].isin(valid_ids)].reset_index(drop=True)
+    activities_df = activities_df[
+        activities_df["ligand_chembl_id"].isin(valid_ids)
+    ].reset_index(drop=True)
     n_dropped_acts = n_before_acts - len(activities_df)
     if n_dropped_acts:
-        print(f"  Dropped {n_dropped_acts} activities with no valid SMILES ({len(activities_df)} remaining)")
+        print(
+            f"  Dropped {n_dropped_acts} activities with no valid SMILES ({len(activities_df)} remaining)"
+        )
     print(f"  Targets: {targets_df.shape}")
 
     activities_df.to_parquet(intermediate_dir / "activities_raw.parquet", index=False)
     compounds_df.to_parquet(intermediate_dir / "compounds_raw.parquet", index=False)
     targets_df.to_parquet(intermediate_dir / "targets_raw.parquet", index=False)
     assay_docs_df.to_parquet(intermediate_dir / "assay_docs.parquet", index=False)
-    print("  Saved activities_raw.parquet, compounds_raw.parquet, targets_raw.parquet, assay_docs.parquet.")
+    print(
+        "  Saved activities_raw.parquet, compounds_raw.parquet, targets_raw.parquet, assay_docs.parquet."
+    )
 
     # ------------------------------------------------------------------
     # STEP 2: Compute fingerprints
@@ -83,8 +100,12 @@ def main() -> None:
         n_jobs=config.pipeline.n_jobs,
     )
     skipped = len(compounds_df) - len(fp_names)
-    print(f"  Fingerprints: {fp_matrix.shape} ({skipped} molecules skipped due to parse failure)")
-    np.savez_compressed(intermediate_dir / "fingerprints.npz", names=fp_names, fps=fp_matrix)
+    print(
+        f"  Fingerprints: {fp_matrix.shape} ({skipped} molecules skipped due to parse failure)"
+    )
+    np.savez_compressed(
+        intermediate_dir / "fingerprints.npz", names=fp_names, fps=fp_matrix
+    )
     print("  Saved fingerprints.npz.")
 
     fp_index = {name: i for i, name in enumerate(fp_names)}
@@ -106,7 +127,9 @@ def main() -> None:
         n_jobs=config.pipeline.n_jobs,
     )
     novel_test = novelty_test[f"is_novel_{year_test}"]
-    print(f"  {year_test} cutoff (test) — novel: {(novel_test == True).sum()}, not novel: {(novel_test == False).sum()}, reference: {novel_test.isna().sum()}")
+    print(
+        f"  {year_test} cutoff (test) — novel: {(novel_test == True).sum()}, not novel: {(novel_test == False).sum()}, reference: {novel_test.isna().sum()}"
+    )
 
     novelty_val = compute_novelty_for_cutoff(
         compounds_df=compounds_df,
@@ -117,7 +140,9 @@ def main() -> None:
         n_jobs=config.pipeline.n_jobs,
     )
     novel_val = novelty_val[f"is_novel_{year_val}"]
-    print(f"  {year_val} cutoff (val) — novel: {(novel_val == True).sum()}, not novel: {(novel_val == False).sum()}, reference: {novel_val.isna().sum()}")
+    print(
+        f"  {year_val} cutoff (val) — novel: {(novel_val == True).sum()}, not novel: {(novel_val == False).sum()}, reference: {novel_val.isna().sum()}"
+    )
 
     # Add 6 novelty columns to compounds_df and save as intermediate
     compounds_df = compounds_df.set_index("chembl_id")
@@ -132,28 +157,38 @@ def main() -> None:
     n_original = activities_df["pchembl_value"].notna().sum()
     activities_df = add_pchembl_columns(activities_df)
     n_filled = activities_df["pchembl_value_filled"].notna().sum()
-    print(f"  pchembl_value_filled: {n_filled} non-null (vs {n_original} in original pchembl_value)")
+    print(
+        f"  pchembl_value_filled: {n_filled} non-null (vs {n_original} in original pchembl_value)"
+    )
 
     # Drop rows with no pchembl value or no relation (e.g. missing data or non-convertible units)
-    mask_no_value = activities_df["pchembl_value_filled"].isna() | activities_df["pchembl_relation"].isna()
+    mask_no_value = (
+        activities_df["pchembl_value_filled"].isna()
+        | activities_df["pchembl_relation"].isna()
+    )
     n_dropped = mask_no_value.sum()
     if n_dropped:
         activities_df = activities_df[~mask_no_value].reset_index(drop=True)
-        print(f"  Dropped {n_dropped} rows with null pchembl_value_filled or null pchembl_relation")
+        print(
+            f"  Dropped {n_dropped} rows with null pchembl_value_filled or null pchembl_relation"
+        )
 
     # ------------------------------------------------------------------
     # STEP 5: Assign splits
     # ------------------------------------------------------------------
     print("Step 5: Assigning splits...")
     activities_df = assign_splits(
-        activities_df, compounds_df,
+        activities_df,
+        compounds_df,
         year_val_start=year_val,
         year_test_start=year_test,
     )
     print("  Split value counts (including NaN):")
     print(activities_df["split"].value_counts(dropna=False).to_string())
 
-    activities_df.to_parquet(intermediate_dir / "split_assignments.parquet", index=False)
+    activities_df.to_parquet(
+        intermediate_dir / "split_assignments.parquet", index=False
+    )
     print("  Saved split_assignments.parquet.")
 
     # ------------------------------------------------------------------
@@ -172,7 +207,9 @@ def main() -> None:
             min_std=af.min_std,
             one_assay_per_doi=af.one_assay_per_doi,
         )
-        print(f"  Rows removed: {before - len(activities_df):,}  ({before:,} → {len(activities_df):,})")
+        print(
+            f"  Rows removed: {before - len(activities_df):,}  ({before:,} → {len(activities_df):,})"
+        )
         print("  Split distribution after filtering:")
         print(activities_df["split"].value_counts(dropna=False).to_string())
     else:
@@ -183,11 +220,17 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("Step 7: Building final activity file...")
 
-    sim_cols = compounds_df[[
-        "cpd_earliest_year", "canonical_smiles", "mw_freebase",
-        f"max_sim_pre_{year_test}", f"most_sim_cpd_pre_{year_test}",
-        f"max_sim_pre_{year_val}", f"most_sim_cpd_pre_{year_val}",
-    ]]
+    sim_cols = compounds_df[
+        [
+            "cpd_earliest_year",
+            "canonical_smiles",
+            "mw_freebase",
+            f"max_sim_pre_{year_test}",
+            f"most_sim_cpd_pre_{year_test}",
+            f"max_sim_pre_{year_val}",
+            f"most_sim_cpd_pre_{year_val}",
+        ]
+    ]
     activities_df = activities_df.merge(
         sim_cols,
         left_on="ligand_chembl_id",
@@ -200,12 +243,22 @@ def main() -> None:
         activities_df = activities_df[activities_df["split"] != "discard_not_novel"]
 
     final_col_order = [
-        "target_chembl_id", "assay_chembl_id", "ligand_chembl_id",
-        "standard_type", "pchembl_relation", "pchembl_value_filled",
-        "split", "mw_freebase", "data_validity_comment", "potential_duplicate",
-        "doc_year", "cpd_earliest_year",
-        f"max_sim_pre_{year_test}", f"most_sim_cpd_pre_{year_test}",
-        f"max_sim_pre_{year_val}", f"most_sim_cpd_pre_{year_val}",
+        "target_chembl_id",
+        "assay_chembl_id",
+        "ligand_chembl_id",
+        "standard_type",
+        "pchembl_relation",
+        "pchembl_value_filled",
+        "split",
+        "mw_freebase",
+        "data_validity_comment",
+        "potential_duplicate",
+        "doc_year",
+        "cpd_earliest_year",
+        f"max_sim_pre_{year_test}",
+        f"most_sim_cpd_pre_{year_test}",
+        f"max_sim_pre_{year_val}",
+        f"most_sim_cpd_pre_{year_val}",
         "canonical_smiles",
     ]
     activities_df = activities_df[final_col_order]

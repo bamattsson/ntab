@@ -80,11 +80,13 @@ def filter_by_tanimoto(
         results = [worker(item) for item in tqdm(candidate_bvs, desc="Tanimoto filter")]
     else:
         with multiprocessing.Pool(processes=n_jobs) as pool:
-            results = list(tqdm(
-                pool.imap(worker, candidate_bvs, chunksize=chunksize),
-                total=len(candidate_bvs),
-                desc=f"Tanimoto filter ({n_jobs} workers)",
-            ))
+            results = list(
+                tqdm(
+                    pool.imap(worker, candidate_bvs, chunksize=chunksize),
+                    total=len(candidate_bvs),
+                    desc=f"Tanimoto filter ({n_jobs} workers)",
+                )
+            )
 
     # Results may arrive out of order from pool.map, but map preserves order.
     # Sort by index defensively anyway.

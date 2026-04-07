@@ -51,16 +51,26 @@ def compute_novelty_for_cutoff(
         result[col_novel] = True
         return result
 
-    ref_ids = np.array([
-        cid for cid in indexed.index
-        if cid in fp_index and indexed.loc[cid, "cpd_earliest_year"] < cutoff_year
-    ])
-    ref_fps = fp_matrix[[fp_index[cid] for cid in ref_ids]] if len(ref_ids) > 0 else np.empty((0, fp_matrix.shape[1]))
+    ref_ids = np.array(
+        [
+            cid
+            for cid in indexed.index
+            if cid in fp_index and indexed.loc[cid, "cpd_earliest_year"] < cutoff_year
+        ]
+    )
+    ref_fps = (
+        fp_matrix[[fp_index[cid] for cid in ref_ids]]
+        if len(ref_ids) > 0
+        else np.empty((0, fp_matrix.shape[1]))
+    )
 
-    cand_ids = np.array([
-        cid for cid in indexed.index
-        if cid in fp_index and indexed.loc[cid, "cpd_earliest_year"] >= cutoff_year
-    ])
+    cand_ids = np.array(
+        [
+            cid
+            for cid in indexed.index
+            if cid in fp_index and indexed.loc[cid, "cpd_earliest_year"] >= cutoff_year
+        ]
+    )
 
     if len(cand_ids) == 0:
         return result
