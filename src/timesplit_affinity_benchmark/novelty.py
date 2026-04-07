@@ -9,7 +9,7 @@ def compute_novelty_for_cutoff(
     cutoff_year: int,
     fp_index: dict[str, int],
     fp_matrix: np.ndarray,
-    threshold: float,
+    threshold: float | None,
     n_jobs: int = 1,
 ) -> pd.DataFrame:
     """Compute Tanimoto novelty for compounds relative to a time-based cutoff year.
@@ -24,8 +24,9 @@ def compute_novelty_for_cutoff(
             candidates = cpd_earliest_year >= cutoff_year.
         fp_index: Mapping from chembl_id to row index in fp_matrix.
         fp_matrix: Binary fingerprint matrix, shape (N, fp_size).
-        threshold: A compound is novel if its max Tanimoto similarity is
-            strictly less than this value.
+        threshold: A compound is novel if its max Tanimoto similarity is strictly
+            less than this value.  Pass None to disable filtering — all candidates
+            are marked as novel without running the Tanimoto computation.
         n_jobs: Number of worker processes for the Tanimoto computation.
 
     Returns:
@@ -45,6 +46,10 @@ def compute_novelty_for_cutoff(
         index=indexed.index,
     )
     result.index.name = "chembl_id"
+
+    if threshold is None:
+        result[col_novel] = True
+        return result
 
     ref_ids = np.array([
         cid for cid in indexed.index

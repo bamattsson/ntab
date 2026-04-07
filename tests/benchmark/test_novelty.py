@@ -87,6 +87,25 @@ class TestComputeNoveltyForCutoff:
         )
         assert pd.isna(result.loc["A", "is_novel_2024"])
 
+    def test_threshold_none_marks_all_compounds_novel(self) -> None:
+        """threshold=None skips Tanimoto computation; every compound (including
+        reference-set compounds) is marked novel so nothing ends up as discard_not_novel."""
+        compounds, fp_matrix, fp_index = _make_fixtures()
+        result = compute_novelty_for_cutoff(
+            compounds_df=compounds,
+            cutoff_year=2024,
+            fp_index=fp_index,
+            fp_matrix=fp_matrix,
+            threshold=None,
+        )
+        # All compounds are marked novel, including reference-set A
+        for cid in ["A", "B", "C"]:
+            assert result.loc[cid, "is_novel_2024"] == True
+        # max_sim and most_sim columns remain NaN (not computed)
+        for cid in ["A", "B", "C"]:
+            assert pd.isna(result.loc[cid, "max_sim_pre_2024"])
+            assert pd.isna(result.loc[cid, "most_sim_cpd_pre_2024"])
+
     def test_cutoff_year_2023_val_compounds_are_candidates(self) -> None:
         """With cutoff_year=2023, val-year (2023) and test-year (2025) compounds
         are all candidates; only pre-2023 compounds are reference."""

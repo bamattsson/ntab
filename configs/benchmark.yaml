@@ -8,7 +8,7 @@ chembl_requester:
 out_dir: out
 
 pipeline:
-  tanimoto_threshold: 0.35  # compounds with max Tanimoto similarity >= this are excluded from val/test
+  tanimoto_threshold: 0.35  # compounds with max Tanimoto similarity >= this are excluded from val/test; null disables the filter
 
   # Year boundaries for the time split.
   # - doc_year < year_val_start                              → train
@@ -17,8 +17,9 @@ pipeline:
   year_val_start: 2022
   year_test_start: 2023
 
-  # Set to true to retain "discard_not_novel" rows (test-year compounds with
-  # Tanimoto similarity >= tanimoto_threshold to earlier compounds) in the output.
+  # Set to true to retain "discard_not_novel" rows (test-year compounds that are
+  # not novel — either due to the Tanimoto filter or because they first appeared
+  # before the cutoff year) in the output.
   keep_discard_not_novel: false
 
   n_jobs: -1   # parallel workers for fingerprint and compounds similarity computation: -1 -> use all cores
