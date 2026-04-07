@@ -55,6 +55,16 @@ def main() -> None:
     compounds_df = compounds_df[compounds_df["chembl_id"].isin(relevant_ids)].reset_index(drop=True)
 
     print(f"  Compounds (filtered to activities): {compounds_df.shape}")
+
+    # Drop compounds with no valid SMILES (null within compounds_df, or absent from
+    # compound_structures entirely) and remove their activities.
+    compounds_df = compounds_df[compounds_df["canonical_smiles"].notna()].reset_index(drop=True)
+    valid_ids = set(compounds_df["chembl_id"])
+    n_before_acts = len(activities_df)
+    activities_df = activities_df[activities_df["ligand_chembl_id"].isin(valid_ids)].reset_index(drop=True)
+    n_dropped_acts = n_before_acts - len(activities_df)
+    if n_dropped_acts:
+        print(f"  Dropped {n_dropped_acts} activities with no valid SMILES ({len(activities_df)} remaining)")
     print(f"  Targets: {targets_df.shape}")
 
     activities_df.to_parquet(intermediate_dir / "activities_raw.parquet", index=False)
