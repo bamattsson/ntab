@@ -1,4 +1,8 @@
-# timesplit-affinity-benchmark
+# TNAB – Time-split Novelty filtered Affinity Benchmark
+
+![](docs/benchmark_methodology.png)
+
+**Paper**: [coming soon]() | **Dataset**: [coming soon]()
 
 Code for generating a time-split, novelty-filtered benchmark for protein-ligand binding affinity prediction.
 
@@ -103,7 +107,7 @@ Intermediate files written between steps for inspection and debugging:
 | `targets_raw.parquet` | Single-protein targets with sequence and classification |
 | `assay_docs.parquet` | Document metadata per assay: `assay_chembl_id`, `doc_chembl_id`, `doi`, `title`, `src_description` |
 | `fingerprints.npz` | ECFP4 fingerprint matrix (`fps`) and compound IDs (`names`) |
-| `compounds_with_novelty.parquet` | Compounds enriched with novelty columns for both the 2023 and 2024 cutoffs |
+| `compounds_with_novelty.parquet` | Compounds enriched with novelty columns for both the 2022 and 2023 cutoffs |
 | `split_assignments.parquet` | Activities with split labels before final column selection and filtering |
 
 ## Data inclusion criteria
@@ -125,6 +129,20 @@ After ChEMBL retrieval, three further filters determine which rows appear in the
 - **No `doc_year`**: rows with a missing publication year cannot be assigned to a split and are excluded.
 - **Novelty (test/val only)**: by default, test-year compounds that are not novel vs. pre-2023 compounds (`discard_not_novel`) are excluded. This can be changed via `keep_discard_not_novel` in the config.
 - **Assay quality (test/val only)**: (assay, measurement-type) groups are removed if they have fewer than 10 unique compounds, a pChEMBL SD below 0.5, non-equality relations, or share a publication with another passing assay. Configurable via `filter_val_and_test_sets` in the config.
+
+## Citation
+
+If you use TNAB in your research, please cite:
+
+```bibtex
+@article{mattsson2026critical,
+  title   = {Critical Assessment of Binding Affinity Benchmarks: Data Leakage and the Illusion of Generalization},
+  author  = {Mattsson, Bj{\"o}rn and Walters, W. Patrick},
+  year = {2026},
+  doi = {},
+  journal = {},
+}
+```
 
 ## Running tests
 

@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+*.egg
 
 # Virtual environment
 .venv/
@@ -11,8 +12,20 @@ build/
 # Pytest
 .pytest_cache/
 
+# Outputs
+out/
+out_baseline/
+
+# Data files
+*.parquet
+*.npz
+*.csv
+
 # Dev scratch
 dev/
+
+# macOS
+.DS_Store
 
 # Editor
 .idea/
