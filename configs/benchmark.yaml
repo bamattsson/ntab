@@ -29,4 +29,4 @@ pipeline:
     only_equal_relation: true  # Whether to only keep pchembl_relation of `=`
     min_std: 0.5  # Assays with fewer than this standard deviation are removed
     min_cpd_per_assay: 10  # Assays with fewer than this number of compounds are removed
-    one_assay_per_doi: true  # Whether to only keep one assay per paper
+    one_assay_per_doc: true  # Whether to only keep one assay per ChEMBL document

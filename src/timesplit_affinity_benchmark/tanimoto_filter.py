@@ -88,8 +88,8 @@ def filter_by_tanimoto(
                 )
             )
 
-    # Results may arrive out of order from pool.map, but map preserves order.
-    # Sort by index defensively anyway.
+    # pool.imap preserves order, but sort defensively in case this is
+    # ever switched to imap_unordered.
     results.sort(key=lambda r: r[0])
 
     max_similarities = np.array([r[1] for r in results], dtype=float)

@@ -15,17 +15,17 @@ def _filter_single_split(
     only_equal_relation: bool,
     min_cpd_per_assay: int,
     min_std: float,
-    one_assay_per_doi: bool,
+    one_assay_per_doc: bool,
 ) -> pd.DataFrame:
     """Apply all filtering steps to a single split's rows.
 
     Args:
         df_split: Rows belonging to one split value.
-        assay_docs_df: DOI lookup table.
+        assay_docs_df: Document lookup table.
         only_equal_relation: See filter_assay_types.
         min_cpd_per_assay: See filter_assay_types.
         min_std: See filter_assay_types.
-        one_assay_per_doi: See filter_assay_types.
+        one_assay_per_doc: See filter_assay_types.
 
     Returns:
         Filtered rows for this split.
@@ -58,16 +58,18 @@ def _filter_single_split(
     if passing.empty:
         return df_split.iloc[:0]  # empty with same columns
 
-    # Step 5: one assay per DOI
-    if one_assay_per_doi:
-        doi_map = assay_docs_df[["assay_chembl_id", "doi"]].drop_duplicates(
+    # Step 5: one assay per document
+    if one_assay_per_doc:
+        doc_map = assay_docs_df[["assay_chembl_id", "doc_chembl_id"]].drop_duplicates(
             "assay_chembl_id"
         )
-        passing = passing.merge(doi_map, on="assay_chembl_id", how="left")
+        passing = passing.merge(doc_map, on="assay_chembl_id", how="left")
 
-        # Assays absent from assay_docs get NaN doi; treat each as its own group
-        # by falling back to the assay ID so they are never collapsed together.
-        passing["doi"] = passing["doi"].fillna(passing["assay_chembl_id"])
+        # Assays absent from assay_docs get NaN doc_chembl_id; treat each as its
+        # own group by falling back to the assay ID so they are never collapsed.
+        passing["doc_chembl_id"] = passing["doc_chembl_id"].fillna(
+            passing["assay_chembl_id"]
+        )
 
         passing["_assay_num"] = (
             passing["assay_chembl_id"]
@@ -75,10 +77,10 @@ def _filter_single_split(
             .astype(int)
         )
 
-        # Sort so that the first row per DOI group is the winner
+        # Sort so that the first row per document group is the winner
         passing = (
             passing.sort_values(["n_cpd", "_assay_num"], ascending=[False, True])
-            .groupby("doi", dropna=False)
+            .groupby("doc_chembl_id", dropna=False)
             .first()
             .reset_index()[["assay_chembl_id", "standard_type"]]
         )
@@ -95,7 +97,7 @@ def filter_assay_types(
     only_equal_relation: bool,
     min_cpd_per_assay: int,
     min_std: float,
-    one_assay_per_doi: bool,
+    one_assay_per_doc: bool,
 ) -> pd.DataFrame:
     """Filter activities to retain only well-characterised (assay, standard_type) groups.
 
@@ -115,16 +117,16 @@ def filter_assay_types(
        unique compounds are removed.
     4. (assay, standard_type) groups whose ``pchembl_value_filled`` SD is below
        ``min_std`` are removed.
-    5. If ``one_assay_per_doi`` is True, at most one (assay, standard_type) is
-       kept per DOI within that split: the group with the most compounds, with
-       ties broken by the lowest numeric part of the assay CHEMBL ID.  Assays
-       absent from assay_docs_df (no DOI) are treated as their own DOI group and
-       are never removed by this step.
+    5. If ``one_assay_per_doc`` is True, at most one (assay, standard_type) is
+       kept per ChEMBL document (``doc_chembl_id``) within that split: the group
+       with the most compounds, with ties broken by the lowest numeric part of the
+       assay CHEMBL ID.  Assays absent from assay_docs_df are treated as their own
+       document group and are never removed by this step.
 
     Args:
         activities_df: Full activities DataFrame containing a ``split`` column.
-        assay_docs_df: DataFrame with columns ``assay_chembl_id`` and ``doi``,
-            used for the one-assay-per-DOI filter.
+        assay_docs_df: DataFrame with columns ``assay_chembl_id`` and
+            ``doc_chembl_id``, used for the one-assay-per-document filter.
         apply_to: Split names to filter (e.g. ``["test", "val_novel"]``).
         only_equal_relation: If True, drop rows where ``pchembl_relation != '='``
             from the affected splits before applying any other filter.
@@ -132,8 +134,8 @@ def filter_assay_types(
             (assay, standard_type) group to be retained (inclusive).
         min_std: Minimum ``pchembl_value_filled`` standard deviation required
             for an (assay, standard_type) group to be retained (inclusive).
-        one_assay_per_doi: If True, keep at most one (assay, standard_type) per
-            DOI within each split independently.
+        one_assay_per_doc: If True, keep at most one (assay, standard_type) per
+            ChEMBL document within each split independently.
 
     Returns:
         A new DataFrame with the filtered splits replacing the originals.
@@ -155,7 +157,7 @@ def filter_assay_types(
                 only_equal_relation=only_equal_relation,
                 min_cpd_per_assay=min_cpd_per_assay,
                 min_std=min_std,
-                one_assay_per_doi=one_assay_per_doi,
+                one_assay_per_doc=one_assay_per_doc,
             )
         )
 

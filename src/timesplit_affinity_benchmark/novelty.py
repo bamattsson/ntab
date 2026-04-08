@@ -25,8 +25,9 @@ def compute_novelty_for_cutoff(
         fp_index: Mapping from chembl_id to row index in fp_matrix.
         fp_matrix: Binary fingerprint matrix, shape (N, fp_size).
         threshold: A compound is novel if its max Tanimoto similarity is strictly
-            less than this value.  Pass None to disable filtering — all candidates
-            are marked as novel without running the Tanimoto computation.
+            less than this value. Pass None to disable filtering — all candidates
+            are marked as novel without running the Tanimoto computation (even
+            compounds older than cutoff_year!).
         n_jobs: Number of worker processes for the Tanimoto computation.
 
     Returns:

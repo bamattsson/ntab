@@ -18,7 +18,7 @@ class AssayFilterConfig:
     only_equal_relation: bool
     min_std: float
     min_cpd_per_assay: int
-    one_assay_per_doi: bool
+    one_assay_per_doc: bool
 
 
 @dataclass

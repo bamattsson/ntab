@@ -16,7 +16,7 @@ def _make_activities(rows: list[dict]) -> pd.DataFrame:
 
 
 def _make_assay_docs(rows: list[dict]) -> pd.DataFrame:
-    return pd.DataFrame(rows, columns=["assay_chembl_id", "doi"])
+    return pd.DataFrame(rows, columns=["assay_chembl_id", "doc_chembl_id"])
 
 
 def _passing_values(n: int = 10) -> list[float]:
@@ -43,7 +43,7 @@ def test_assay_below_min_cpd_is_removed() -> None:
             for i, v in enumerate(_passing_values(n=9))  # 9 < 10
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -52,7 +52,7 @@ def test_assay_below_min_cpd_is_removed() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert result.empty
 
@@ -71,7 +71,7 @@ def test_assay_meeting_min_cpd_exactly_is_kept() -> None:
             for i, v in enumerate(_passing_values(n=10))
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -80,7 +80,7 @@ def test_assay_meeting_min_cpd_exactly_is_kept() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert len(result) == 10
 
@@ -99,7 +99,7 @@ def test_assay_below_min_std_is_removed() -> None:
             for i in range(10)
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -108,7 +108,7 @@ def test_assay_below_min_std_is_removed() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert result.empty
 
@@ -130,7 +130,7 @@ def test_assay_meeting_min_std_exactly_is_kept() -> None:
             for i, v in enumerate(values)
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     # Threshold just below actual SD: assay should pass
     result = filter_assay_types(
@@ -140,7 +140,7 @@ def test_assay_meeting_min_std_exactly_is_kept() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=actual_std - 0.01,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert len(result) == 10
 
@@ -152,7 +152,7 @@ def test_assay_meeting_min_std_exactly_is_kept() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=actual_std + 0.01,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert result.empty
 
@@ -171,7 +171,7 @@ def test_assay_passing_both_thresholds_is_kept() -> None:
             for i, v in enumerate(_passing_values(n=10))
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -180,7 +180,7 @@ def test_assay_passing_both_thresholds_is_kept() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert len(result) == 10
     assert set(result["assay_chembl_id"]) == {"CHEMBL1"}
@@ -204,7 +204,7 @@ def test_train_rows_are_never_filtered() -> None:
         for i in range(3)  # would fail N threshold if filtered
     ]
     activities = _make_activities(train_rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -213,7 +213,7 @@ def test_train_rows_are_never_filtered() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert len(result) == 3
     assert (result["split"] == "train").all()
@@ -248,8 +248,8 @@ def test_apply_to_limits_which_splits_are_filtered() -> None:
     activities = _make_activities(rows)
     docs = _make_assay_docs(
         [
-            {"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"},
-            {"assay_chembl_id": "CHEMBL2", "doi": "10.1/b"},
+            {"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"},
+            {"assay_chembl_id": "CHEMBL2", "doc_chembl_id": "CHEMBL1000002"},
         ]
     )
 
@@ -260,7 +260,7 @@ def test_apply_to_limits_which_splits_are_filtered() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
 
     assert (result["split"] == "val_not_novel").all()
@@ -298,7 +298,7 @@ def test_only_equal_relation_removes_non_equal_rows_from_output() -> None:
     )
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -307,7 +307,7 @@ def test_only_equal_relation_removes_non_equal_rows_from_output() -> None:
         only_equal_relation=True,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
 
     assert (result["pchembl_relation"] == "=").all()
@@ -328,7 +328,7 @@ def test_only_equal_relation_false_keeps_non_equal_rows() -> None:
         for i, v in enumerate(_passing_values(n=10))
     ]
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -337,7 +337,7 @@ def test_only_equal_relation_false_keeps_non_equal_rows() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
 
     assert "<" in result["pchembl_relation"].values
@@ -370,7 +370,7 @@ def test_only_equal_relation_non_equal_rows_count_toward_n_threshold() -> None:
     )
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -379,7 +379,7 @@ def test_only_equal_relation_non_equal_rows_count_toward_n_threshold() -> None:
         only_equal_relation=True,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert result.empty
 
@@ -405,7 +405,7 @@ def test_duplicate_compound_rows_are_removed_from_output() -> None:
     rows.append({**rows[0]})
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -414,7 +414,7 @@ def test_duplicate_compound_rows_are_removed_from_output() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert len(result) == 10
 
@@ -435,7 +435,7 @@ def test_deduplication_counts_unique_compounds_for_threshold() -> None:
     unique_rows.append({**unique_rows[0]})
 
     activities = _make_activities(unique_rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -444,17 +444,17 @@ def test_deduplication_counts_unique_compounds_for_threshold() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert result.empty
 
 
 # ---------------------------------------------------------------------------
-# one_assay_per_doi
+# one_assay_per_doc
 # ---------------------------------------------------------------------------
 
 
-def test_one_assay_per_doi_keeps_assay_with_most_compounds() -> None:
+def test_one_assay_per_doc_keeps_assay_with_most_compounds() -> None:
     """When two assay-types from the same DOI pass filters, the larger one is kept."""
     rows = []
     # CHEMBL1: 15 compounds
@@ -483,8 +483,8 @@ def test_one_assay_per_doi_keeps_assay_with_most_compounds() -> None:
     activities = _make_activities(rows)
     docs = _make_assay_docs(
         [
-            {"assay_chembl_id": "CHEMBL1", "doi": "10.1/same"},
-            {"assay_chembl_id": "CHEMBL2", "doi": "10.1/same"},
+            {"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"},
+            {"assay_chembl_id": "CHEMBL2", "doc_chembl_id": "CHEMBL1000001"},
         ]
     )
 
@@ -495,14 +495,14 @@ def test_one_assay_per_doi_keeps_assay_with_most_compounds() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=True,
+        one_assay_per_doc=True,
     )
 
     assert set(result["assay_chembl_id"]) == {"CHEMBL1"}
     assert len(result) == 15
 
 
-def test_one_assay_per_doi_tiebreaks_by_lowest_assay_number() -> None:
+def test_one_assay_per_doc_tiebreaks_by_lowest_assay_number() -> None:
     """When two assay-types from the same DOI have equal compound counts, the lower CHEMBL ID wins."""
     rows = []
     for i, v in enumerate(_passing_values(n=10)):
@@ -529,8 +529,8 @@ def test_one_assay_per_doi_tiebreaks_by_lowest_assay_number() -> None:
     activities = _make_activities(rows)
     docs = _make_assay_docs(
         [
-            {"assay_chembl_id": "CHEMBL100", "doi": "10.1/same"},
-            {"assay_chembl_id": "CHEMBL200", "doi": "10.1/same"},
+            {"assay_chembl_id": "CHEMBL100", "doc_chembl_id": "CHEMBL1000001"},
+            {"assay_chembl_id": "CHEMBL200", "doc_chembl_id": "CHEMBL1000001"},
         ]
     )
 
@@ -541,13 +541,13 @@ def test_one_assay_per_doi_tiebreaks_by_lowest_assay_number() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=True,
+        one_assay_per_doc=True,
     )
 
     assert set(result["assay_chembl_id"]) == {"CHEMBL100"}
 
 
-def test_one_assay_per_doi_different_standard_types_same_doi_keeps_only_one() -> None:
+def test_one_assay_per_doc_different_standard_types_same_doi_keeps_only_one() -> None:
     """Two assay-types with the same DOI but different standard_types: only one survives."""
     rows = []
     for i, v in enumerate(_passing_values(n=10)):
@@ -574,8 +574,8 @@ def test_one_assay_per_doi_different_standard_types_same_doi_keeps_only_one() ->
     activities = _make_activities(rows)
     docs = _make_assay_docs(
         [
-            {"assay_chembl_id": "CHEMBL1", "doi": "10.1/same"},
-            {"assay_chembl_id": "CHEMBL2", "doi": "10.1/same"},
+            {"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"},
+            {"assay_chembl_id": "CHEMBL2", "doc_chembl_id": "CHEMBL1000001"},
         ]
     )
 
@@ -586,7 +586,7 @@ def test_one_assay_per_doi_different_standard_types_same_doi_keeps_only_one() ->
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=True,
+        one_assay_per_doc=True,
     )
 
     # CHEMBL2/Kd has more compounds, should win
@@ -594,8 +594,8 @@ def test_one_assay_per_doi_different_standard_types_same_doi_keeps_only_one() ->
     assert set(result["standard_type"]) == {"Kd"}
 
 
-def test_one_assay_per_doi_assay_without_doi_is_kept() -> None:
-    """Assays with no matching DOI in assay_docs are treated as their own group and kept."""
+def test_one_assay_per_doc_assay_without_doc_is_kept() -> None:
+    """Assays with no matching doc_chembl_id in assay_docs are treated as their own group and kept."""
     rows = [
         {
             "assay_chembl_id": "CHEMBL999",
@@ -606,7 +606,7 @@ def test_one_assay_per_doi_assay_without_doi_is_kept() -> None:
         }
         for i, v in enumerate(_passing_values(n=10))
     ]
-    docs = _make_assay_docs([])  # no DOI mapping at all
+    docs = _make_assay_docs([])  # no doc mapping at all
 
     result = filter_assay_types(
         rows if False else _make_activities(rows),
@@ -615,15 +615,15 @@ def test_one_assay_per_doi_assay_without_doi_is_kept() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=True,
+        one_assay_per_doc=True,
     )
 
     assert len(result) == 10
     assert set(result["assay_chembl_id"]) == {"CHEMBL999"}
 
 
-def test_one_assay_per_doi_different_dois_both_kept() -> None:
-    """Two assay-types from different DOIs both survive one_assay_per_doi."""
+def test_one_assay_per_doc_different_docs_both_kept() -> None:
+    """Two assay-types from different documents both survive one_assay_per_doc."""
     rows = []
     for i, v in enumerate(_passing_values(n=10)):
         rows.append(
@@ -649,8 +649,8 @@ def test_one_assay_per_doi_different_dois_both_kept() -> None:
     activities = _make_activities(rows)
     docs = _make_assay_docs(
         [
-            {"assay_chembl_id": "CHEMBL1", "doi": "10.1/paper_a"},
-            {"assay_chembl_id": "CHEMBL2", "doi": "10.1/paper_b"},
+            {"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"},
+            {"assay_chembl_id": "CHEMBL2", "doc_chembl_id": "CHEMBL1000002"},
         ]
     )
 
@@ -661,7 +661,7 @@ def test_one_assay_per_doi_different_dois_both_kept() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=True,
+        one_assay_per_doc=True,
     )
 
     assert set(result["assay_chembl_id"]) == {"CHEMBL1", "CHEMBL2"}
@@ -699,7 +699,7 @@ def test_thresholds_are_evaluated_per_split_not_across_splits() -> None:
         )
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doi": "10.1/a"}])
+    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
 
     result = filter_assay_types(
         activities,
@@ -708,6 +708,6 @@ def test_thresholds_are_evaluated_per_split_not_across_splits() -> None:
         only_equal_relation=False,
         min_cpd_per_assay=10,
         min_std=0.5,
-        one_assay_per_doi=False,
+        one_assay_per_doc=False,
     )
     assert result.empty

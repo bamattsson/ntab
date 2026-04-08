@@ -205,7 +205,7 @@ def main() -> None:
             only_equal_relation=af.only_equal_relation,
             min_cpd_per_assay=af.min_cpd_per_assay,
             min_std=af.min_std,
-            one_assay_per_doi=af.one_assay_per_doi,
+            one_assay_per_doc=af.one_assay_per_doc,
         )
         print(
             f"  Rows removed: {before - len(activities_df):,}  ({before:,} → {len(activities_df):,})"
