@@ -651,6 +651,47 @@ class TestPrintMetrics:
         out = capsys.readouterr().out
         assert "±" not in out
 
+    def test_n_assays_printed(self, capsys) -> None:
+        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+
+        _print_metrics(self._make_df())
+        out = capsys.readouterr().out
+        assert "n_assays =" in out
+
+    def test_macro_and_weighted_differ_for_unequal_assays(self, capsys) -> None:
+        # Build a df with two assays of very different sizes so the two averaging
+        # modes produce visibly different numbers.
+        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+
+        rng = np.random.default_rng(42)
+        n_small, n_large = 10, 90
+        df = pd.DataFrame(
+            {
+                "assay_id": ["SMALL"] * n_small + ["LARGE"] * n_large,
+                "standard_type": ["IC50"] * (n_small + n_large),
+                "split": ["test"] * (n_small + n_large),
+                "pchembl_value": np.concatenate(
+                    [rng.uniform(4, 9, n_small), rng.uniform(4, 9, n_large)]
+                ).astype(np.float32),
+                "pred_pchembl": np.concatenate(
+                    [rng.uniform(4, 9, n_small), rng.uniform(4, 9, n_large)]
+                ).astype(np.float32),
+            }
+        )
+        _print_metrics(df, weighted=False)
+        out_macro = capsys.readouterr().out
+        _print_metrics(df, weighted=True)
+        out_weighted = capsys.readouterr().out
+        # Extract the Pearson r values; they should differ between modes
+        import re
+
+        def extract_r(s: str) -> float:
+            m = re.search(r"Pearson r = ([+-]?\d+\.\d+)", s)
+            assert m, f"Could not find Pearson r in: {s}"
+            return float(m.group(1))
+
+        assert extract_r(out_macro) != extract_r(out_weighted)
+
 
 # ---------------------------------------------------------------------------
 # evaluate_splits (integration)

@@ -20,8 +20,12 @@ def pearson_r_per_assay(
     assay_ids: list[str],
     min_assay_size: int = MIN_ASSAY_SIZE,
     n_bootstrap: None | int = None,
+    weighted: bool = False,
 ) -> tuple[float, float | None]:
     """Compute mean Pearson r across assays, skipping assays below min_assay_size.
+
+    By default computes the macro-average (each qualifying assay contributes
+    equally regardless of size). Pass weighted=True for size-weighted averaging.
 
     Args:
         preds: Predicted values, shape (N,).
@@ -30,11 +34,13 @@ def pearson_r_per_assay(
         min_assay_size: Assays with fewer than this many samples are excluded.
         n_bootstrap: If set, also compute a bootstrap standard error using this
             many resamples (resampling at the assay level).
+        weighted: If False (default), compute macro-average (equal weight per
+            assay). If True, weight each assay's Pearson r by its sample count.
 
     Returns:
-        Tuple of (pearson_r, se) where pearson_r is the size-weighted mean
-        Pearson r across qualifying assays (NaN if none qualify), and se is
-        the bootstrap standard error, or None if n_bootstrap was not provided.
+        Tuple of (pearson_r, se) where pearson_r is the mean Pearson r across
+        qualifying assays (NaN if none qualify), and se is the bootstrap
+        standard error, or None if n_bootstrap was not provided.
     """
     assay_to_indices: dict[str, list[int]] = {}
     for i, assay in enumerate(assay_ids):
@@ -57,17 +63,24 @@ def pearson_r_per_assay(
 
     rs_a = np.array(rs)
     w_a = np.array(weights, dtype=np.float64)
-    pearson_r = float((rs_a * w_a).sum() / w_a.sum())
+    if weighted:
+        pearson_r = float((rs_a * w_a).sum() / w_a.sum())
+    else:
+        pearson_r = float(rs_a.mean())
+
     if n_bootstrap is None:
         return pearson_r, None
 
-    # Bootstrap a confidence interval by resampling assays
+    # Bootstrap a standard error by resampling assays
     rng = np.random.default_rng()
     num_assays = len(rs_a)
     boot_idx = rng.integers(0, num_assays, size=(n_bootstrap, num_assays))
     boot_rs = rs_a[boot_idx]  # (n_bootstrap, num_assays)
-    boot_ws = w_a[boot_idx]  # (n_bootstrap, num_assays)
-    boot_means = (boot_rs * boot_ws).sum(axis=1) / boot_ws.sum(axis=1)
+    if weighted:
+        boot_ws = w_a[boot_idx]  # (n_bootstrap, num_assays)
+        boot_means = (boot_rs * boot_ws).sum(axis=1) / boot_ws.sum(axis=1)
+    else:
+        boot_means = boot_rs.mean(axis=1)
     se = float(boot_means.std())
     return pearson_r, se
 
@@ -127,7 +140,7 @@ class MetricsPlotCallback(L.Callback):
             axes[1].grid(True, alpha=0.3)
             axes[2].plot(epochs_val, val_pearson_r, "g-o", ms=4)
             axes[2].set(
-                title="Val Pearson r (size-weighted)",
+                title="Val Pearson r (macro avg)",
                 xlabel="Epoch",
                 ylabel="Pearson r",
             )

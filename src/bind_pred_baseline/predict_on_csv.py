@@ -79,6 +79,7 @@ def predict_on_csv(
     batch_size: int = 256,
     n_bootstrap: int | None = None,
     device: str | None = None,
+    weighted: bool = False,
 ) -> None:
     """Run model inference on a user CSV and write predictions.
 
@@ -93,6 +94,7 @@ def predict_on_csv(
         batch_size: Inference batch size.
         n_bootstrap: If given and labels are present, compute bootstrapped SE.
         device: Torch device. Defaults to "cuda" if available, else "cpu".
+        weighted: If False (default), macro-average Pearson r. If True, size-weighted.
     """
     print(f"Loading input from {input_csv}")
     df = load_csv_as_standard_df(input_csv, default_standard_type=standard_type)
@@ -133,7 +135,7 @@ def predict_on_csv(
     print(f"Predictions saved to {output_csv} ({len(output_df):,} rows)")
 
     if output_df["pchembl_value"].notna().any():
-        _print_metrics(output_df, n_bootstrap=n_bootstrap)
+        _print_metrics(output_df, n_bootstrap=n_bootstrap, weighted=weighted)
 
 
 def main() -> None:
@@ -175,6 +177,12 @@ def main() -> None:
         default=None,
         help="Torch device (default: auto-detect GPU, fall back to CPU)",
     )
+    parser.add_argument(
+        "--size-weighted",
+        action="store_true",
+        default=False,
+        help="Use size-weighted Pearson r instead of macro-average (default: macro)",
+    )
     args = parser.parse_args()
 
     predict_on_csv(
@@ -186,6 +194,7 @@ def main() -> None:
         batch_size=args.batch_size,
         n_bootstrap=args.n_bootstraps,
         device=args.device,
+        weighted=args.size_weighted,
     )
 
 

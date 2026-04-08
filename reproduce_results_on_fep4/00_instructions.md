@@ -19,7 +19,7 @@ This will run the full pipeline that pulls ChEMBL data and prepares the data fil
 python src/timesplit_affinity_benchmark/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_generation.yaml
 ```
 
-(Note that this will apply a time-based split as per the design idea of this repo, we will override this in the next step)
+(Note that this will put everything in train split, we will override this split in the next step)
 
 **Step 2 – Preprocess features and apply FEP+ split:**
 
@@ -45,6 +45,7 @@ python -m bind_pred_baseline.predict_on_csv \
     --data-dir out_FEP4_baseline/data_preprocessing \
     --input-csv ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv \
     --output-csv predictions.csv \
+    --size-weighted \
     --n-bootstraps 1000
 ```
 

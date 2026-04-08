@@ -110,6 +110,26 @@ class TestPearsonRPerAssay:
         r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
         assert math.isnan(r)
 
+    def test_size_weighted_differs_from_macro_for_unequal_assays(self) -> None:
+        # Assay A (3 samples, r≈1) and Assay B (9 samples, r≈-1).
+        # Macro avg = (1 + -1) / 2 = 0.
+        # Size-weighted avg = (3*1 + 9*(-1)) / 12 = -0.5.
+        preds_a = np.array([1.0, 2.0, 3.0])
+        labels_a = np.array([1.0, 2.0, 3.0])
+        preds_b = np.array([9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
+        labels_b = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+        preds = np.concatenate([preds_a, preds_b])
+        labels = np.concatenate([labels_a, labels_b])
+        assay_ids = ["A"] * 3 + ["B"] * 9
+        r_macro, _ = pearson_r_per_assay(
+            preds, labels, assay_ids, min_assay_size=3, weighted=False
+        )
+        r_weighted, _ = pearson_r_per_assay(
+            preds, labels, assay_ids, min_assay_size=3, weighted=True
+        )
+        assert pytest.approx(r_macro, abs=1e-5) == 0.0
+        assert pytest.approx(r_weighted, abs=1e-5) == -0.5
+
 
 # ---------------------------------------------------------------------------
 # AffinityModel — forward pass

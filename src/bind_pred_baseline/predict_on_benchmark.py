@@ -175,12 +175,21 @@ def _assemble_output_df(
     return df_out[OUTPUT_COLUMNS]
 
 
+def _count_qualifying_assays(assay_ids: list[str], min_assay_size: int) -> int:
+    """Count assay groups with at least min_assay_size samples."""
+    counts: dict[str, int] = {}
+    for aid in assay_ids:
+        counts[aid] = counts.get(aid, 0) + 1
+    return sum(1 for n in counts.values() if n >= min_assay_size)
+
+
 def _print_metrics(
     df: pd.DataFrame,
     min_assay_size: int = MIN_ASSAY_SIZE,
     n_bootstrap: int | None = None,
+    weighted: bool = False,
 ) -> None:
-    """Print size-weighted Pearson r per split and overall.
+    """Print macro-averaged Pearson r per split and overall.
 
     Args:
         df: DataFrame with columns: assay_id, standard_type, split,
@@ -188,6 +197,8 @@ def _print_metrics(
         min_assay_size: Minimum compounds per (assay, standard_type) group to
             include in the metric.
         n_bootstrap: If given, also compute and print bootstrapped SE.
+        weighted: If False (default), macro-average (equal weight per assay).
+            If True, size-weighted average.
     """
     assay_ids = [f"{a}_{s}" for a, s in zip(df["assay_id"], df["standard_type"])]
     labels = df["pchembl_value"].to_numpy(dtype=np.float32)
@@ -203,24 +214,30 @@ def _print_metrics(
             split_assay_ids,
             min_assay_size=min_assay_size,
             n_bootstrap=n_bootstrap,
+            weighted=weighted,
         )
         n_rows = int(mask.sum())
+        n_assays = _count_qualifying_assays(split_assay_ids, min_assay_size)
         se_str = f" \u00b1 {se:.4f}" if se is not None else ""
         print(
-            f"  {split:25s}  Pearson r = {float(r):.4f}{se_str}  (n_rows = {n_rows:,})"
+            f"  {split:25s}  Pearson r = {float(r):.4f}{se_str}"
+            f"  (n_rows = {n_rows:,}, n_assays = {n_assays})"
         )
 
     if df["split"].nunique() > 1:
+        n_assays_all = _count_qualifying_assays(assay_ids, min_assay_size)
         r_all, se_all = pearson_r_per_assay(
             preds,
             labels,
             assay_ids,
             min_assay_size=min_assay_size,
             n_bootstrap=n_bootstrap,
+            weighted=weighted,
         )
         se_str = f" \u00b1 {se_all:.4f}" if se_all is not None else ""
         print(
-            f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{se_str}  (n_rows = {len(df):,})"
+            f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{se_str}"
+            f"  (n_rows = {len(df):,}, n_assays = {n_assays_all})"
         )
 
 
@@ -233,6 +250,7 @@ def evaluate_splits(
     output_csv: Path,
     batch_size: int = 512,
     n_bootstrap: int | None = None,
+    weighted: bool = False,
 ) -> None:
     """Run inference on specified splits and write per-row predictions to CSV.
 
@@ -251,6 +269,7 @@ def evaluate_splits(
         output_csv: Destination path for the predictions CSV.
         batch_size: Inference batch size.
         n_bootstrap: If given, compute bootstrapped SE for each Pearson r metric.
+        weighted: If False (default), macro-average Pearson r. If True, size-weighted.
     """
     print(f"Loading activities from {activities_path}")
     df = load_activities_as_standard_df(activities_path, targets_path, splits)
@@ -292,7 +311,7 @@ def evaluate_splits(
     print(f"Predictions saved to {output_csv} ({len(output_df):,} rows)")
 
     if output_df["pchembl_value"].notna().any():
-        _print_metrics(output_df, n_bootstrap=n_bootstrap)
+        _print_metrics(output_df, n_bootstrap=n_bootstrap, weighted=weighted)
 
 
 def main() -> None:
@@ -325,6 +344,12 @@ def main() -> None:
         default=None,
         help="Number of bootstrap resamples for SE on Pearson r (default: off)",
     )
+    parser.add_argument(
+        "--size-weighted",
+        action="store_true",
+        default=False,
+        help="Use size-weighted Pearson r instead of macro-average (default: macro)",
+    )
     args = parser.parse_args()
 
     evaluate_splits(
@@ -336,6 +361,7 @@ def main() -> None:
         output_csv=Path(args.output),
         batch_size=args.batch_size,
         n_bootstrap=args.n_bootstraps,
+        weighted=args.size_weighted,
     )
 
 
