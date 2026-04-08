@@ -43,7 +43,9 @@ def test_assay_below_min_cpd_is_removed() -> None:
             for i, v in enumerate(_passing_values(n=9))  # 9 < 10
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -71,7 +73,9 @@ def test_assay_meeting_min_cpd_exactly_is_kept() -> None:
             for i, v in enumerate(_passing_values(n=10))
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -99,7 +103,9 @@ def test_assay_below_min_std_is_removed() -> None:
             for i in range(10)
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -130,7 +136,9 @@ def test_assay_meeting_min_std_exactly_is_kept() -> None:
             for i, v in enumerate(values)
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     # Threshold just below actual SD: assay should pass
     result = filter_assay_types(
@@ -171,7 +179,9 @@ def test_assay_passing_both_thresholds_is_kept() -> None:
             for i, v in enumerate(_passing_values(n=10))
         ]
     )
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -204,7 +214,9 @@ def test_train_rows_are_never_filtered() -> None:
         for i in range(3)  # would fail N threshold if filtered
     ]
     activities = _make_activities(train_rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -298,7 +310,9 @@ def test_only_equal_relation_removes_non_equal_rows_from_output() -> None:
     )
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -328,7 +342,9 @@ def test_only_equal_relation_false_keeps_non_equal_rows() -> None:
         for i, v in enumerate(_passing_values(n=10))
     ]
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -370,7 +386,9 @@ def test_only_equal_relation_non_equal_rows_count_toward_n_threshold() -> None:
     )
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -405,7 +423,9 @@ def test_duplicate_compound_rows_are_removed_from_output() -> None:
     rows.append({**rows[0]})
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -435,7 +455,9 @@ def test_deduplication_counts_unique_compounds_for_threshold() -> None:
     unique_rows.append({**unique_rows[0]})
 
     activities = _make_activities(unique_rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
@@ -699,7 +721,9 @@ def test_thresholds_are_evaluated_per_split_not_across_splits() -> None:
         )
 
     activities = _make_activities(rows)
-    docs = _make_assay_docs([{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}])
+    docs = _make_assay_docs(
+        [{"assay_chembl_id": "CHEMBL1", "doc_chembl_id": "CHEMBL1000001"}]
+    )
 
     result = filter_assay_types(
         activities,
