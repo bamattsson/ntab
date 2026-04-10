@@ -25,8 +25,18 @@ pipeline:
   n_jobs: -1   # parallel workers for fingerprint and compounds similarity computation: -1 -> use all cores
   activity_limit: null  # set to an integer (e.g. 10000) for a smaller test run; null = full dataset
   filter_val_and_test_sets:  # Disable by setting to null/false
-    apply_to: ["test", "val_novel", "val_not_novel"]  # which splits you want to apply this filter to
+    apply_to: ["test", "val"]  # which splits you want to apply this filter to
     only_equal_relation: true  # Whether to only keep pchembl_relation of `=`
     min_std: 0.5  # Assays with fewer than this standard deviation are removed
     min_cpd_per_assay: 10  # Assays with fewer than this number of compounds are removed
     one_assay_per_doc: true  # Whether to only keep one assay per ChEMBL document
+
+  # Cluster-based split (alternative to the time + Tanimoto novelty split above).
+  # Ignores the time + tanimoto configs above
+  #
+  use_cluster_split:
+    compounds_clustered_path: compounds_raw_clustered.parquet
+    cluster_col: bblean_cluster   # "cluster" (Butina, cutoff=0.35) or "bblean_cluster" (BitBirch)
+    val_frac: 0.1
+    test_frac: 0.1
+    seed: 42

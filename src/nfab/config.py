@@ -22,6 +22,18 @@ class AssayFilterConfig:
 
 
 @dataclass
+class ClusterSplitConfig:
+    """Configuration for cluster-based train/val/test splitting.
+    """
+
+    compounds_clustered_path: str  # path to compounds_raw_clustered.parquet
+    cluster_col: str  # "cluster" (Butina, cutoff=0.35) or "bblean_cluster" (BitBirch)
+    val_frac: float = 0.1  # target fraction of total datapoints in val (pre-assay-filter)
+    test_frac: float = 0.1  # target fraction of total datapoints in test (pre-assay-filter)
+    seed: int = 42
+
+
+@dataclass
 class PipelineConfig:
     tanimoto_threshold: (
         float | None
@@ -34,6 +46,7 @@ class PipelineConfig:
     n_jobs: int = 1
     activity_limit: int | None = None
     filter_val_and_test_sets: AssayFilterConfig | None = None
+    use_cluster_split: ClusterSplitConfig | None = None
 
 
 @dataclass
@@ -63,7 +76,14 @@ def load_config(path: str | Path) -> Config:
     filter_raw = pipeline_raw.pop("filter_val_and_test_sets", None)
     filter_config = AssayFilterConfig(**filter_raw) if filter_raw else None
 
-    pipeline = PipelineConfig(**pipeline_raw, filter_val_and_test_sets=filter_config)
+    cluster_raw = pipeline_raw.pop("use_cluster_split", None)
+    cluster_config = ClusterSplitConfig(**cluster_raw) if cluster_raw else None
+
+    pipeline = PipelineConfig(
+        **pipeline_raw,
+        filter_val_and_test_sets=filter_config,
+        use_cluster_split=cluster_config,
+    )
 
     out_dir: str = raw.get("out_dir", "out")
 
