@@ -1,10 +1,10 @@
-# TNAB – Time-split Novelty-filtered Affinity Benchmark
+# Novelty-filtered Affinity Benchmark
 
 ![](docs/benchmark_methodology.png)
 
 **Paper**: [coming soon]() | **Dataset**: [coming soon]()
 
-Code for generating a time-split, novelty-filtered benchmark for protein-ligand binding affinity prediction.
+Code for generating a novelty-filtered and time-split benchmark for protein-ligand binding affinity prediction.
 
 ## Overview
 
@@ -31,8 +31,8 @@ source .venv/bin/activate
 ### conda
 
 ```bash
-conda create -n timesplit-affinity python=3.10
-conda activate timesplit-affinity
+conda create -n nfab python=3.10
+conda activate nfab
 pip install -e .
 ```
 
@@ -49,7 +49,7 @@ Add your ChEMBL database credentials to `configs/benchmark.yaml`.
 ### 2. Run the pipeline
 
 ```bash
-python -m timesplit_affinity_benchmark.run_pipeline --config configs/benchmark.yaml
+python -m nfab.run_pipeline --config configs/benchmark.yaml
 ```
 
 The pipeline runs in 8 steps and writes intermediate files to `out/intermediate/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 45 minutes on a machine with 16 cores and requires ~40 GB of RAM.
@@ -132,7 +132,7 @@ After ChEMBL retrieval, three further filters determine which rows appear in the
 
 ## Citation
 
-If you use TNAB in your research, please cite:
+If you use NFAB in your research, please cite:
 
 ```bibtex
 @article{mattsson2026critical,

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from timesplit_affinity_benchmark.novelty import (
+from nfab.novelty import (
     compute_ecfp4_fingerprints,
     compute_novelty_for_cutoff,
     filter_by_tanimoto,

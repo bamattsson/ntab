@@ -2,7 +2,7 @@
 Pipeline entry point for generating the timesplit affinity benchmark.
 
 Usage:
-    python src/timesplit_affinity_benchmark/run_pipeline.py --config config.yaml
+    python src/nfab/run_pipeline.py --config config.yaml
 """
 
 import argparse
@@ -11,11 +11,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from timesplit_affinity_benchmark.affinity_utils import add_pchembl_columns
-from timesplit_affinity_benchmark.assay_filter import filter_assay_types
-from timesplit_affinity_benchmark.chembl_requester import ChEMBLRequester
-from timesplit_affinity_benchmark.config import load_config
-from timesplit_affinity_benchmark.novelty import (
+from nfab.affinity_utils import add_pchembl_columns
+from nfab.assay_filter import filter_assay_types
+from nfab.chembl_requester import ChEMBLRequester
+from nfab.config import load_config
+from nfab.novelty import (
     compute_ecfp4_fingerprints,
     compute_novelty_for_cutoff,
 )

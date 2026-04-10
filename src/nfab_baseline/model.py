@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import lightning as L
 
-from bind_pred_baseline.constants import FP_SIZE, MIN_ASSAY_SIZE, N_MOL_PROP_FEATURES
-from bind_pred_baseline.model_utils import pearson_r_per_assay
+from nfab_baseline.constants import FP_SIZE, MIN_ASSAY_SIZE, N_MOL_PROP_FEATURES
+from nfab_baseline.model_utils import pearson_r_per_assay
 
 
 class AffinityModel(L.LightningModule):

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from bind_pred_baseline.preprocess_utils import (
+from nfab_baseline.preprocess_utils import (
     FEATURE_NAMES,
     compute_mol_properties,
     normalise_mol_properties,

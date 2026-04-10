@@ -6,7 +6,7 @@ measured labels. Also prints size-weighted Pearson r per split.
 
 Usage
 -----
-    python -m bind_pred_baseline.predict_on_benchmark \\
+    python -m nfab_baseline.predict_on_benchmark \\
         --checkpoint out_baseline/lightning_logs/version_0/checkpoints/best.ckpt \\
         --data-dir out_baseline/data_preprocessing \\
         --activities out/activities.parquet \\
@@ -23,10 +23,10 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from bind_pred_baseline.constants import MIN_ASSAY_SIZE
-from bind_pred_baseline.model import AffinityModel
-from bind_pred_baseline.model_utils import pearson_r_per_assay
-from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+from nfab_baseline.constants import MIN_ASSAY_SIZE
+from nfab_baseline.model import AffinityModel
+from nfab_baseline.model_utils import pearson_r_per_assay
+from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
 OUTPUT_COLUMNS = [
     "assay_id",

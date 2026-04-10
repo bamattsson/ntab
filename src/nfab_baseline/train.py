@@ -1,7 +1,7 @@
 """Lightning CLI entry point for training the binding prediction baseline.
 
 Usage:
-    uv run python -m bind_pred_baseline.train fit --config configs/baseline/train.yaml
+    uv run python -m nfab_baseline.train fit --config configs/baseline/train.yaml
 """
 
 import json
@@ -13,9 +13,9 @@ from lightning.pytorch.cli import LightningCLI
 import torch
 from torch.utils.data import DataLoader
 
-from bind_pred_baseline.constants import MOL_PROP_FEATURES
-from bind_pred_baseline.dataset import AffinityDataset
-from bind_pred_baseline.model import AffinityModel
+from nfab_baseline.constants import MOL_PROP_FEATURES
+from nfab_baseline.dataset import AffinityDataset
+from nfab_baseline.model import AffinityModel
 
 
 class AffinityDataModule(L.LightningDataModule):

@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from pathlib import Path
 
-from bind_pred_baseline.preprocess_utils import (
+from nfab_baseline.preprocess_utils import (
     average_duplicates,
     build_target_index,
     find_closest_training_targets,

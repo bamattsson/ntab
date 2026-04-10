@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from timesplit_affinity_benchmark.assay_filter import filter_assay_types
+from nfab.assay_filter import filter_assay_types
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Training config.
 # Run with:
-#   python -m bind_pred_baseline.train fit --config configs/baseline/train.yaml
+#   python -m nfab_baseline.train fit --config configs/baseline/train.yaml
 
 seed_everything: 42
 
@@ -11,7 +11,7 @@ trainer:
   log_every_n_steps: 50
   default_root_dir: out_baseline
   callbacks:
-    - class_path: bind_pred_baseline.model_utils.MetricsPlotCallback
+    - class_path: nfab_baseline.model_utils.MetricsPlotCallback
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: val_pearson_r

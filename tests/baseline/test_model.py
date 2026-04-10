@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 import torch
 
-from bind_pred_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
-from bind_pred_baseline.model import AffinityModel
-from bind_pred_baseline.model_utils import pearson_r_per_assay
+from nfab_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
+from nfab_baseline.model import AffinityModel
+from nfab_baseline.model_utils import pearson_r_per_assay
 
 
 # ---------------------------------------------------------------------------

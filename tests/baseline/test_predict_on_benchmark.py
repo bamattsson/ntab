@@ -1,4 +1,4 @@
-"""Tests for bind_pred_baseline.predict_on_benchmark and bind_pred_baseline.preprocess_pred_data.
+"""Tests for nfab_baseline.predict_on_benchmark and nfab_baseline.preprocess_pred_data.
 
 Covers:
 - preprocess_for_inference (shared preprocessing, standard DataFrame in)
@@ -16,12 +16,12 @@ import pandas as pd
 import pytest
 import torch
 
-from bind_pred_baseline.constants import (
+from nfab_baseline.constants import (
     FP_SIZE,
     N_MOL_PROP_FEATURES,
     STANDARD_TYPE_INDEX,
 )
-from bind_pred_baseline.model import AffinityModel
+from nfab_baseline.model import AffinityModel
 
 
 # ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ _SMILES = ["c1ccccc1", "CC(=O)O", "CCO", "c1ccncc1", "CCCC", "CN(C)C", "c1ccc(N)
 
 def _make_preproc_dir(tmp_path: Path, n_targets: int = 5) -> Path:
     """Minimal data_dir compatible with training preprocessing artifacts."""
-    from bind_pred_baseline.preprocess_utils import FEATURE_NAMES as PROP_FEATURE_NAMES
+    from nfab_baseline.preprocess_utils import FEATURE_NAMES as PROP_FEATURE_NAMES
 
     d = tmp_path / "preproc"
     d.mkdir(parents=True, exist_ok=True)
@@ -156,14 +156,14 @@ def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
 
 class TestPreprocessForInference:
     def test_returns_six_tuple(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         data_dir = _make_preproc_dir(tmp_path)
         result = preprocess_for_inference(_make_standard_df(), data_dir)
         assert len(result) == 6
 
     def test_fp_matrix_dtype_float32(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         fp_matrix, *_ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -171,7 +171,7 @@ class TestPreprocessForInference:
         assert fp_matrix.dtype == np.float32
 
     def test_fp_matrix_second_dim_is_fp_size(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         fp_matrix, *_ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -179,7 +179,7 @@ class TestPreprocessForInference:
         assert fp_matrix.shape[1] == FP_SIZE
 
     def test_props_matrix_dtype_float32(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         _, props_matrix, *_ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -189,7 +189,7 @@ class TestPreprocessForInference:
     def test_props_matrix_second_dim_is_n_mol_prop_features(
         self, tmp_path: Path
     ) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         _, props_matrix, *_ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -197,7 +197,7 @@ class TestPreprocessForInference:
         assert props_matrix.shape[1] == N_MOL_PROP_FEATURES
 
     def test_fp_indices_dtype_int64(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         _, _, fp_indices, *_ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -205,7 +205,7 @@ class TestPreprocessForInference:
         assert fp_indices.dtype == np.int64
 
     def test_target_indices_dtype_int64(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         _, _, _, target_indices, *_ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -213,7 +213,7 @@ class TestPreprocessForInference:
         assert target_indices.dtype == np.int64
 
     def test_std_type_indices_dtype_int64(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         _, _, _, _, std_type_indices, _ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -221,7 +221,7 @@ class TestPreprocessForInference:
         assert std_type_indices.dtype == np.int64
 
     def test_arrays_and_df_filtered_same_length(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=8)
         _, _, fp_indices, target_indices, std_type_indices, df_filtered = (
@@ -233,7 +233,7 @@ class TestPreprocessForInference:
         assert len(std_type_indices) == n
 
     def test_fp_indices_in_bounds(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         fp_matrix, _, fp_indices, *_ = preprocess_for_inference(
             _make_standard_df(), _make_preproc_dir(tmp_path)
@@ -242,7 +242,7 @@ class TestPreprocessForInference:
         assert (fp_indices < len(fp_matrix)).all()
 
     def test_target_indices_in_bounds(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         n_targets = 5
         _, _, _, target_indices, *_ = preprocess_for_inference(
@@ -255,7 +255,7 @@ class TestPreprocessForInference:
     def test_std_type_indices_reflect_per_row_standard_type(
         self, tmp_path: Path
     ) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=9, mixed_standard_types=True)
         _, _, _, _, std_type_indices, _ = preprocess_for_inference(
@@ -264,7 +264,7 @@ class TestPreprocessForInference:
         assert len(set(std_type_indices.tolist())) > 1
 
     def test_std_type_index_values_match_constants(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=9, mixed_standard_types=True)
         _, _, _, _, std_type_indices, df_filtered = preprocess_for_inference(
@@ -274,7 +274,7 @@ class TestPreprocessForInference:
         assert std_type_indices.tolist() == expected
 
     def test_df_filtered_preserves_input_columns(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df()
         _, _, _, _, _, df_filtered = preprocess_for_inference(
@@ -284,7 +284,7 @@ class TestPreprocessForInference:
             assert col in df_filtered.columns
 
     def test_smiles_parse_failure_drops_rows(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=4).copy()
         df.loc[0, "smiles"] = "not_a_valid_smiles!!!!"
@@ -295,7 +295,7 @@ class TestPreprocessForInference:
         assert bad_cpd not in df_filtered["ligand_name"].values
 
     def test_unknown_target_raises_key_error(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=3, n_targets=3).copy()
         df.loc[0, "uniprot_id"] = "QUNKNWN"
@@ -303,7 +303,7 @@ class TestPreprocessForInference:
             preprocess_for_inference(df, _make_preproc_dir(tmp_path, n_targets=3))
 
     def test_key_error_lists_all_unresolvable_targets(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df(n_rows=4, n_targets=3).copy()
         df["uniprot_id"] = ["QAAA", "QBBB", "P00000", "QAAA"]
@@ -314,7 +314,7 @@ class TestPreprocessForInference:
         assert "QBBB" in msg
 
     def test_oov_mapping_resolves_unknown_target(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         data_dir = _make_preproc_dir(tmp_path, n_targets=5)
         (data_dir / "oov_target_mapping.json").write_text(
@@ -326,7 +326,7 @@ class TestPreprocessForInference:
         assert len(result) == 6
 
     def test_missing_oov_file_is_ok(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         data_dir = _make_preproc_dir(tmp_path)
         assert not (data_dir / "oov_target_mapping.json").exists()
@@ -335,14 +335,14 @@ class TestPreprocessForInference:
 
     def test_accepts_canonical_smiles_column(self, tmp_path: Path) -> None:
         """DataFrame with canonical_smiles instead of smiles should still work."""
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         df = _make_standard_df().rename(columns={"smiles": "canonical_smiles"})
         result = preprocess_for_inference(df, _make_preproc_dir(tmp_path))
         assert len(result) == 6
 
     def test_duplicate_ligand_names_share_fp_matrix_row(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.preprocess_pred_data import preprocess_for_inference
+        from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
         data_dir = _make_preproc_dir(tmp_path, n_targets=5)
         df = pd.DataFrame(
@@ -383,7 +383,7 @@ class TestLoadActivitiesAsStandardDf:
         return acts_path, tgts_path
 
     def test_returns_dataframe(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -392,7 +392,7 @@ class TestLoadActivitiesAsStandardDf:
         assert isinstance(df, pd.DataFrame)
 
     def test_has_required_standard_columns(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -402,7 +402,7 @@ class TestLoadActivitiesAsStandardDf:
             assert col in df.columns, f"Missing required column: {col}"
 
     def test_renames_assay_chembl_id_to_assay_id(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -412,7 +412,7 @@ class TestLoadActivitiesAsStandardDf:
         assert "assay_chembl_id" not in df.columns
 
     def test_renames_ligand_chembl_id_to_ligand_name(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -422,7 +422,7 @@ class TestLoadActivitiesAsStandardDf:
         assert "ligand_chembl_id" not in df.columns
 
     def test_renames_canonical_smiles_to_smiles(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -432,7 +432,7 @@ class TestLoadActivitiesAsStandardDf:
         assert "canonical_smiles" not in df.columns
 
     def test_filters_to_requested_split(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -441,7 +441,7 @@ class TestLoadActivitiesAsStandardDf:
         assert set(df["split"].unique()) == {"test"}
 
     def test_multiple_splits_included(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -450,7 +450,7 @@ class TestLoadActivitiesAsStandardDf:
         assert set(df["split"].unique()) == {"test", "val"}
 
     def test_joins_uniprot_id_from_targets(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -460,7 +460,7 @@ class TestLoadActivitiesAsStandardDf:
         assert df["uniprot_id"].str.startswith("P").all()
 
     def test_raises_when_no_rows_for_any_split(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -469,7 +469,7 @@ class TestLoadActivitiesAsStandardDf:
             load_activities_as_standard_df(acts, tgts, splits=["nonexistent"])
 
     def test_drops_null_pchembl_value(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -486,7 +486,7 @@ class TestLoadActivitiesAsStandardDf:
     def test_renames_pchembl_value_filled_to_pchembl_value(
         self, tmp_path: Path
     ) -> None:
-        from bind_pred_baseline.predict_on_benchmark import (
+        from nfab_baseline.predict_on_benchmark import (
             load_activities_as_standard_df,
         )
 
@@ -519,7 +519,7 @@ class TestRunInference:
         )
 
     def test_returns_ndarray(self) -> None:
-        from bind_pred_baseline.predict_on_benchmark import run_inference
+        from nfab_baseline.predict_on_benchmark import run_inference
 
         model = self._make_model()
         arrays = self._make_arrays()
@@ -527,7 +527,7 @@ class TestRunInference:
         assert isinstance(result, np.ndarray)
 
     def test_returns_float32(self) -> None:
-        from bind_pred_baseline.predict_on_benchmark import run_inference
+        from nfab_baseline.predict_on_benchmark import run_inference
 
         model = self._make_model()
         arrays = self._make_arrays()
@@ -535,7 +535,7 @@ class TestRunInference:
         assert result.dtype == np.float32
 
     def test_length_matches_n_rows(self) -> None:
-        from bind_pred_baseline.predict_on_benchmark import run_inference
+        from nfab_baseline.predict_on_benchmark import run_inference
 
         n_rows = 12
         model = self._make_model()
@@ -544,7 +544,7 @@ class TestRunInference:
         assert len(result) == n_rows
 
     def test_device_none_does_not_raise(self) -> None:
-        from bind_pred_baseline.predict_on_benchmark import run_inference
+        from nfab_baseline.predict_on_benchmark import run_inference
 
         model = self._make_model()
         arrays = self._make_arrays()
@@ -552,7 +552,7 @@ class TestRunInference:
         assert len(result) > 0
 
     def test_explicit_cpu_device(self) -> None:
-        from bind_pred_baseline.predict_on_benchmark import run_inference
+        from nfab_baseline.predict_on_benchmark import run_inference
 
         model = self._make_model()
         arrays = self._make_arrays()
@@ -560,7 +560,7 @@ class TestRunInference:
         assert isinstance(result, np.ndarray)
 
     def test_no_nan_in_output(self) -> None:
-        from bind_pred_baseline.predict_on_benchmark import run_inference
+        from nfab_baseline.predict_on_benchmark import run_inference
 
         model = self._make_model()
         arrays = self._make_arrays()
@@ -587,14 +587,14 @@ class TestPrintMetrics:
         )
 
     def test_runs_without_error(self, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df())
         captured = capsys.readouterr()
         assert "Pearson" in captured.out
 
     def test_prints_each_split(self, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         rng = np.random.default_rng(1)
         n = 30
@@ -613,7 +613,7 @@ class TestPrintMetrics:
         assert "discard_not_novel" in out
 
     def test_prints_overall_when_multiple_splits(self, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         rng = np.random.default_rng(2)
         n = 30
@@ -631,28 +631,28 @@ class TestPrintMetrics:
         assert "overall" in out
 
     def test_no_overall_line_for_single_split(self, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df())
         out = capsys.readouterr().out
         assert "overall" not in out
 
     def test_bootstrap_se_printed_when_n_bootstrap_given(self, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df(), n_bootstrap=50)
         out = capsys.readouterr().out
         assert "±" in out
 
     def test_no_se_printed_when_n_bootstrap_is_none(self, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df(), n_bootstrap=None)
         out = capsys.readouterr().out
         assert "±" not in out
 
     def test_n_assays_printed(self, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df())
         out = capsys.readouterr().out
@@ -661,7 +661,7 @@ class TestPrintMetrics:
     def test_macro_and_weighted_differ_for_unequal_assays(self, capsys) -> None:
         # Build a df with two assays of very different sizes so the two averaging
         # modes produce visibly different numbers.
-        from bind_pred_baseline.predict_on_benchmark import _print_metrics
+        from nfab_baseline.predict_on_benchmark import _print_metrics
 
         rng = np.random.default_rng(42)
         n_small, n_large = 10, 90
@@ -723,7 +723,7 @@ class TestEvaluateSplits:
         return data_dir, ckpt_path, acts_path, targets_path
 
     def test_creates_output_csv(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -731,7 +731,7 @@ class TestEvaluateSplits:
         assert out_csv.exists()
 
     def test_output_csv_has_unified_columns(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -741,7 +741,7 @@ class TestEvaluateSplits:
             assert col in df.columns, f"Missing column: {col}"
 
     def test_output_uses_assay_id_not_assay_chembl_id(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -751,7 +751,7 @@ class TestEvaluateSplits:
         assert "assay_chembl_id" not in df.columns
 
     def test_output_uses_ligand_name_not_ligand_chembl_id(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -761,7 +761,7 @@ class TestEvaluateSplits:
         assert "ligand_chembl_id" not in df.columns
 
     def test_output_rows_match_requested_split(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         activities_df = pd.read_parquet(acts)
@@ -773,7 +773,7 @@ class TestEvaluateSplits:
         assert len(result) == expected_n
 
     def test_multiple_splits_in_output(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -789,7 +789,7 @@ class TestEvaluateSplits:
         assert set(df["split"].unique()) == {"test", "discard_not_novel"}
 
     def test_pred_pchembl_is_numeric_and_not_null(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -799,7 +799,7 @@ class TestEvaluateSplits:
         assert df["pred_pchembl"].notna().all()
 
     def test_raises_when_no_rows_for_any_split(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -814,7 +814,7 @@ class TestEvaluateSplits:
             )
 
     def test_split_column_preserved_in_output(self, tmp_path: Path) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -823,7 +823,7 @@ class TestEvaluateSplits:
         assert (df["split"] == "test").all()
 
     def test_prints_pearson_r(self, tmp_path: Path, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -832,7 +832,7 @@ class TestEvaluateSplits:
         assert "Pearson" in out
 
     def test_n_bootstrap_prints_se(self, tmp_path: Path, capsys) -> None:
-        from bind_pred_baseline.predict_on_benchmark import evaluate_splits
+        from nfab_baseline.predict_on_benchmark import evaluate_splits
 
         data_dir, ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"

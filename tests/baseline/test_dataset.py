@@ -3,7 +3,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from bind_pred_baseline.dataset import AffinityDataset
+from nfab_baseline.dataset import AffinityDataset
 
 
 # ---------------------------------------------------------------------------

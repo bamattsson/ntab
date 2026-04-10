@@ -11,7 +11,7 @@ import numpy as np
 import lightning as L
 from scipy.stats import pearsonr
 
-from bind_pred_baseline.constants import MIN_ASSAY_SIZE
+from nfab_baseline.constants import MIN_ASSAY_SIZE
 
 
 def pearson_r_per_assay(

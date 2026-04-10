@@ -16,7 +16,7 @@ source .venv/bin/activate
 This will run the full pipeline that pulls ChEMBL data and prepares the data files. First add your local ChEMBL (v36) credentials to `reproduce_results_on_fep4/01_dataset_generation.yaml`. Then run:
 
 ```bash
-python src/timesplit_affinity_benchmark/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_generation.yaml
+python src/nfab/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_generation.yaml
 ```
 
 (Note that this will put everything in train split, we will override this split in the next step)
@@ -24,14 +24,14 @@ python src/timesplit_affinity_benchmark/run_pipeline.py --config reproduce_resul
 **Step 2 – Preprocess features and apply FEP+ split:**
 
 ```bash
-python -m bind_pred_baseline.preprocess_training_data \
+python -m nfab_baseline.preprocess_training_data \
     --config reproduce_results_on_fep4/02_model_data.yaml
 ```
 
 **Step 3 — Train:**
 
 ```bash
-python -m bind_pred_baseline.train fit \
+python -m nfab_baseline.train fit \
     --config reproduce_results_on_fep4/03_train.yaml
 ```
 
@@ -40,7 +40,7 @@ python -m bind_pred_baseline.train fit \
 Replace `version_X` and `<best>` with your values and run:
 
 ```bash
-python -m bind_pred_baseline.predict_on_csv \
+python -m nfab_baseline.predict_on_csv \
     --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
     --data-dir out_FEP4_baseline/data_preprocessing \
     --input-csv ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv \
