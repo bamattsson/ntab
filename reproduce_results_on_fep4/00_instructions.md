@@ -2,7 +2,7 @@
 
 These steps reproduce the evaluation of the baseline model on the FEP+ 4 benchmark dataset. They assume that that you:
 - have a local version of the ChEMBL database (v36) as a postres DB
-- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from [here](https://github.com/bamattsson/paper_data_leakage_FEPp_benchmark/tree/421fc9a620c98e6e49517fcd2c253a3265ea4821/data/out) and that they exist in `../paper_data_leakage_FEPp_benchmark/data/out/` relative to this repo.
+- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from [here](https://github.com/bamattsson/paper-critical_assessment_of_binding_affinity_benchmarks/tree/421fc9a620c98e6e49517fcd2c253a3265ea4821/data/out) and that they exist in `../paper-critical_assessment_of_binding_affinity_benchmarks/data/out/` relative to this repo.
 
 **Step 0 – Install packages:**
 
@@ -43,7 +43,7 @@ Replace `version_X` and `<best>` with your values and run:
 python -m nfab_baseline.predict_on_csv \
     --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
     --data-dir out_FEP4_baseline/data_preprocessing \
-    --input-csv ../paper_data_leakage_FEPp_benchmark/data/out/FEPp_benchmark.csv \
+    --input-csv ../paper-critical_assessment_of_binding_affinity_benchmarks/data/out/FEPp_benchmark.csv \
     --output-csv predictions.csv \
     --size-weighted \
     --n-bootstraps 1000
