@@ -208,7 +208,7 @@ def _print_metrics(
     for split in sorted(df["split"].unique()):
         mask = (df["split"] == split).values
         split_assay_ids = [aid for aid, m in zip(assay_ids, mask) if m]
-        r, se = pearson_r_per_assay(
+        r, ci_low, ci_high = pearson_r_per_assay(
             preds[mask],
             labels[mask],
             split_assay_ids,
@@ -218,15 +218,15 @@ def _print_metrics(
         )
         n_rows = int(mask.sum())
         n_assays = _count_qualifying_assays(split_assay_ids, min_assay_size)
-        se_str = f" \u00b1 {se:.4f}" if se is not None else ""
+        ci_str = f" [{ci_low:.4f}, {ci_high:.4f}]" if ci_low is not None else ""
         print(
-            f"  {split:25s}  Pearson r = {float(r):.4f}{se_str}"
+            f"  {split:25s}  Pearson r = {float(r):.4f}{ci_str}"
             f"  (n_rows = {n_rows:,}, n_assays = {n_assays})"
         )
 
     if df["split"].nunique() > 1:
         n_assays_all = _count_qualifying_assays(assay_ids, min_assay_size)
-        r_all, se_all = pearson_r_per_assay(
+        r_all, ci_low_all, ci_high_all = pearson_r_per_assay(
             preds,
             labels,
             assay_ids,
@@ -234,9 +234,9 @@ def _print_metrics(
             n_bootstrap=n_bootstrap,
             weighted=weighted,
         )
-        se_str = f" \u00b1 {se_all:.4f}" if se_all is not None else ""
+        ci_str = f" [{ci_low_all:.4f}, {ci_high_all:.4f}]" if ci_low_all is not None else ""
         print(
-            f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{se_str}"
+            f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{ci_str}"
             f"  (n_rows = {len(df):,}, n_assays = {n_assays_all})"
         )
 

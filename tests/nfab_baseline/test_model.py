@@ -57,7 +57,7 @@ class TestPearsonRPerAssay:
         # Predictions == labels → Pearson r = 1.0
         vals = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r, _ = pearson_r_per_assay(
+        r, _, _ = pearson_r_per_assay(
             preds=vals, labels=vals, assay_ids=assay_ids, min_assay_size=3
         )
         assert pytest.approx(r, abs=1e-5) == 1.0
@@ -66,7 +66,7 @@ class TestPearsonRPerAssay:
         preds = np.array([8.0, 7.0, 6.0, 5.0, 4.0])
         labels = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r, _ = pearson_r_per_assay(
+        r, _, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
         assert pytest.approx(r, abs=1e-5) == -1.0
@@ -77,7 +77,7 @@ class TestPearsonRPerAssay:
         preds = np.array([1.0, 2.0, 3.0, 3.0, 2.0, 1.0])
         labels = np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
         assay_ids = ["A", "A", "A", "B", "B", "B"]
-        r, _ = pearson_r_per_assay(
+        r, _, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
         assert pytest.approx(r, abs=1e-5) == 0.0
@@ -88,7 +88,7 @@ class TestPearsonRPerAssay:
         preds = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 9.0, 1.0])
         labels = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 9.0])
         assay_ids = ["A", "A", "A", "A", "A", "B", "B"]
-        r, _ = pearson_r_per_assay(
+        r, _, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
         assert pytest.approx(r, abs=1e-5) == 1.0
@@ -97,7 +97,7 @@ class TestPearsonRPerAssay:
         preds = np.array([1.0, 2.0])
         labels = np.array([1.0, 2.0])
         assay_ids = ["A", "A"]
-        r, _ = pearson_r_per_assay(
+        r, _, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
         assert math.isnan(r)
@@ -107,7 +107,7 @@ class TestPearsonRPerAssay:
         preds = np.arange(9, dtype=np.float32)
         labels = np.arange(9, dtype=np.float32)
         assay_ids = ["A"] * 9
-        r, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
+        r, _, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
         assert math.isnan(r)
 
     def test_size_weighted_differs_from_macro_for_unequal_assays(self) -> None:
@@ -121,10 +121,10 @@ class TestPearsonRPerAssay:
         preds = np.concatenate([preds_a, preds_b])
         labels = np.concatenate([labels_a, labels_b])
         assay_ids = ["A"] * 3 + ["B"] * 9
-        r_macro, _ = pearson_r_per_assay(
+        r_macro, _, _ = pearson_r_per_assay(
             preds, labels, assay_ids, min_assay_size=3, weighted=False
         )
-        r_weighted, _ = pearson_r_per_assay(
+        r_weighted, _, _ = pearson_r_per_assay(
             preds, labels, assay_ids, min_assay_size=3, weighted=True
         )
         assert pytest.approx(r_macro, abs=1e-5) == 0.0

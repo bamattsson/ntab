@@ -132,7 +132,7 @@ class AffinityModel(L.LightningModule):
     def on_validation_epoch_end(self) -> None:
         if not self._val_preds:
             return
-        r, _ = pearson_r_per_assay(
+        r, _, _ = pearson_r_per_assay(
             torch.cat(self._val_preds).numpy(),
             torch.cat(self._val_labels).numpy(),
             self._val_assay_ids,
@@ -154,7 +154,7 @@ class AffinityModel(L.LightningModule):
     def on_test_epoch_end(self) -> None:
         if not self._test_preds:
             return
-        r, _ = pearson_r_per_assay(
+        r, _, _ = pearson_r_per_assay(
             torch.cat(self._test_preds).numpy(),
             torch.cat(self._test_labels).numpy(),
             self._test_assay_ids,
