@@ -12,7 +12,7 @@ def _make_compounds_df(
     is_novel_test: list,
     is_novel_val: list,
 ) -> pd.DataFrame:
-    """Build a compounds_df as compute_novelty_for_cutoff would produce it."""
+    """Build a compounds_df as run_pipeline produces after compute_similarity_for_cutoff_year."""
     return pd.DataFrame(
         {
             f"is_novel_{YEAR_TEST}": is_novel_test,

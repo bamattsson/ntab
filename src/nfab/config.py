@@ -25,7 +25,7 @@ class AssayFilterConfig:
 class PipelineConfig:
     tanimoto_threshold: (
         float | None
-    )  # None disables the novelty filter (all candidates treated as novel)
+    )  # None disables similarity filtering (all candidates treated as novel)
     keep_discard_not_novel: bool
     year_val_start: int = 2022  # doc_year >= this is val; doc_year < this is train
     year_test_start: int = (

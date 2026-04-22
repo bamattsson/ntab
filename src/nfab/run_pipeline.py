@@ -15,9 +15,9 @@ from nfab.affinity_utils import add_pchembl_columns
 from nfab.assay_filter import filter_assay_types
 from nfab.chembl_requester import ChEMBLRequester
 from nfab.config import load_config
-from nfab.novelty import (
+from nfab.similarity import (
     compute_ecfp4_fingerprints,
-    compute_novelty_for_cutoff,
+    compute_similarity_for_cutoff_year,
 )
 
 
@@ -38,11 +38,10 @@ def assign_splits(
     - doc_year is null                                                              → None
 
     Novelty is read from compounds_df columns named ``is_novel_{year_val_start}``
-    and ``is_novel_{year_test_start}``, as produced by
-    ``compute_novelty_for_cutoff``.  Reference-set compounds (cpd_earliest_year
-    < cutoff, where cpd_earliest_year is MIN(year) across all ChEMBL activities
-    via the activities → assays → docs path) have NaN for their novelty columns
-    and are treated as not novel.
+    and ``is_novel_{year_test_start}``, computed in run_pipeline from
+    ``compute_similarity_for_cutoff_year`` output via ``max_sim < threshold``.
+    Reference-set compounds (cpd_earliest_year < cutoff) have max_sim=1.0 and
+    are therefore treated as not novel for any threshold < 1.0.
 
     Args:
         activities_df: Activity data with at least columns:
@@ -51,7 +50,7 @@ def assign_splits(
         compounds_df: DataFrame indexed by chembl_id with columns:
             - is_novel_{year_val_start} (bool or pd.NA)
             - is_novel_{year_test_start} (bool or pd.NA)
-            Produced by merging two compute_novelty_for_cutoff outputs.
+            Derived from max_sim_pre_{year} < threshold in run_pipeline.
         year_val_start: First doc_year included in val; everything earlier is train.
         year_test_start: First doc_year included in test; must be > year_val_start.
 
@@ -181,42 +180,48 @@ def main() -> None:
     fp_index = {name: i for i, name in enumerate(fp_names)}
 
     # ------------------------------------------------------------------
-    # STEP 3: Compute novelty
+    # STEP 3: Compute similarity
     # ------------------------------------------------------------------
-    print("Step 3: Computing novelty...")
+    print("Step 3: Computing similarity...")
 
     year_test = config.pipeline.year_test_start
     year_val = config.pipeline.year_val_start
+    threshold = config.pipeline.tanimoto_threshold
 
-    novelty_test = compute_novelty_for_cutoff(
+    sim_test = compute_similarity_for_cutoff_year(
         compounds_df=compounds_df,
         cutoff_year=year_test,
         fp_index=fp_index,
         fp_matrix=fp_matrix,
-        threshold=config.pipeline.tanimoto_threshold,
         n_jobs=config.pipeline.n_jobs,
     )
-    novel_test = novelty_test[f"is_novel_{year_test}"]
-    print(
-        f"  {year_test} cutoff (test) — novel: {(novel_test == True).sum()}, not novel: {(novel_test == False).sum()}, reference: {novel_test.isna().sum()}"
-    )
-
-    novelty_val = compute_novelty_for_cutoff(
+    sim_val = compute_similarity_for_cutoff_year(
         compounds_df=compounds_df,
         cutoff_year=year_val,
         fp_index=fp_index,
         fp_matrix=fp_matrix,
-        threshold=config.pipeline.tanimoto_threshold,
         n_jobs=config.pipeline.n_jobs,
     )
-    novel_val = novelty_val[f"is_novel_{year_val}"]
+
+    # Derive is_novel from similarity; when threshold is None all compounds are novel
+    for year, sim_df in [(year_test, sim_test), (year_val, sim_val)]:
+        if threshold is not None:
+            sim_df[f"is_novel_{year}"] = sim_df[f"max_sim_pre_{year}"] < threshold
+        else:
+            sim_df[f"is_novel_{year}"] = True
+
+    novel_test = sim_test[f"is_novel_{year_test}"]
     print(
-        f"  {year_val} cutoff (val) — novel: {(novel_val == True).sum()}, not novel: {(novel_val == False).sum()}, reference: {novel_val.isna().sum()}"
+        f"  {year_test} cutoff (test) — novel: {(novel_test == True).sum()}, not novel: {(novel_test == False).sum()}"
+    )
+    novel_val = sim_val[f"is_novel_{year_val}"]
+    print(
+        f"  {year_val} cutoff (val) — novel: {(novel_val == True).sum()}, not novel: {(novel_val == False).sum()}"
     )
 
-    # Add 6 novelty columns to compounds_df and save as intermediate
+    # Add similarity and novelty columns to compounds_df and save as intermediate
     compounds_df = compounds_df.set_index("chembl_id")
-    compounds_df = compounds_df.join(novelty_test).join(novelty_val)
+    compounds_df = compounds_df.join(sim_test).join(sim_val)
     compounds_df.to_parquet(intermediate_dir / "compounds_with_novelty.parquet")
     print("  Saved compounds_with_novelty.parquet.")
 
