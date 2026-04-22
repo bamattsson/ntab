@@ -11,7 +11,7 @@ Code for generating a novelty-filtered and time-split benchmark for protein-liga
 The benchmark is constructed from ChEMBL binding affinity data using two complementary strategies to prevent data leakage:
 
 1. **Time split**: activities are partitioned by assay publication year (train: before 2022, val: 2022, test: 2023+).
-2. **Novelty filter**: test compounds are filtered by Tanimoto similarity (ECFP4 2048 fingerprints) — a compound is kept only if its maximum similarity to any earlier compound is below 0.35.
+2. **Similarity-binned test/val sets**: all test and val compounds are labelled by their maximum Morgan Fingerprint (radius 2, 2048-bit) Tanimoto similarity to pre-cutoff compounds, yielding five bins: `[0, 0.35)`, `[0.35, 0.5)`, `[0.5, 0.7)`, `[0.7, 1.0)`, and `=1.0`.
 
 Val and test assays are further filtered to retain only well-characterised (assay, measurement-type) groups: minimum 10 unique compounds, pChEMBL SD ≥ 0.5, equality-relation measurements only, and at most one assay per publication.
 
@@ -82,15 +82,19 @@ One row per activity measurement. Columns:
 
 #### Split labels
 
+Test and val rows are labelled by which similarity bin their compound falls into. With the default bins in `configs/benchmark.yaml`:
+
 | Label | Condition |
 |---|---|
 | `train` | `doc_year < 2022` |
-| `val_novel` | `doc_year == 2022` and compound is novel vs. pre-2022 compounds |
-| `val_not_novel` | `doc_year == 2022` and compound is not novel vs. pre-2022 compounds |
-| `test` | `doc_year >= 2023` and compound is novel vs. pre-2023 compounds |
-| `discard_not_novel` | `doc_year >= 2023` and compound is not novel (excluded by default) |
+| `test_sim_0.00_0.35` | `doc_year >= 2023` and `max_sim_pre_2023 ∈ [0.00, 0.35)` |
+| `test_sim_0.35_0.50` | `doc_year >= 2023` and `max_sim_pre_2023 ∈ [0.35, 0.50)` |
+| `test_sim_0.50_0.70` | `doc_year >= 2023` and `max_sim_pre_2023 ∈ [0.50, 0.70)` |
+| `test_sim_0.70_1.00` | `doc_year >= 2023` and `max_sim_pre_2023 ∈ [0.70, 1.00)` |
+| `test_sim_1.00` | `doc_year >= 2023` and `max_sim_pre_2023 = 1.00` (identical to a pre-2023 compound) |
+| `val_sim_*` | same pattern, `doc_year == 2022`, using `max_sim_pre_2022` |
 
-A compound is **novel** if its maximum ECFP4 Tanimoto similarity (ECFP4 2048 fingerprint) to all earlier compounds is strictly below `tanimoto_threshold` (default 0.35). Rows with no `doc_year` are excluded from all splits.
+Rows with no `doc_year` are excluded from all splits. Rows whose similarity does not fall into any configured bin are also excluded. Bins are configurable via `test_set_similarity_bins` in the pipeline config.
 
 ### `out/targets.parquet`
 
@@ -107,7 +111,7 @@ Intermediate files written between steps for inspection and debugging:
 | `targets_raw.parquet` | Single-protein targets with sequence and classification |
 | `assay_docs.parquet` | Document metadata per assay: `assay_chembl_id`, `doc_chembl_id`, `doi`, `title`, `src_description` |
 | `fingerprints.npz` | ECFP4 fingerprint matrix (`fps`) and compound IDs (`names`) |
-| `compounds_with_novelty.parquet` | Compounds enriched with novelty columns for both the 2022 and 2023 cutoffs |
+| `compounds_with_novelty.parquet` | Compounds enriched with similarity columns (`max_sim_pre_*`, `most_sim_cpd_pre_*`) for both the 2022 and 2023 cutoffs |
 | `split_assignments.parquet` | Activities with split labels before final column selection and filtering |
 
 ## Data inclusion criteria
@@ -127,7 +131,7 @@ The following filters are applied when querying ChEMBL:
 After ChEMBL retrieval, three further filters determine which rows appear in the final output:
 
 - **No `doc_year`**: rows with a missing publication year cannot be assigned to a split and are excluded.
-- **Novelty (test/val only)**: by default, test-year compounds that are not novel vs. pre-2023 compounds (`discard_not_novel`) are excluded. This can be changed via `keep_discard_not_novel` in the config.
+- **Similarity bin (test/val only)**: rows whose compound similarity does not fall into any configured bin are excluded. All compounds are retained when the bins cover the full [0, 1.0] range.
 - **Assay quality (test/val only)**: (assay, measurement-type) groups are removed if they have fewer than 10 unique compounds, a pChEMBL SD below 0.5, non-equality relations, or share a publication with another passing assay. Configurable via `filter_val_and_test_sets` in the config.
 
 ## Citation

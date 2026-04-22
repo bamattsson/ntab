@@ -6,11 +6,18 @@ chembl_requester:
 
 out_dir: out_FEP4
 pipeline:
-  # disabling the datasplit as we will assign the split in step 2 instead
-  tanimoto_threshold: 0.35
-  year_val_start: 3000  # disabled
-  year_test_start: 3001  # disabled
-  keep_discard_not_novel: true  # Needs to be set to true when reproducing the FEP+ 4 results
-  n_jobs: -1   # parallel workers for fingerprint and compounds similarity computation: -1 -> use all cores
+  # Year boundaries set far in the future so all data lands in "train".
+  # The actual train/test split is applied externally in step 2.
+  year_val_start: 3000
+  year_test_start: 3001
+
+  # Single bin covering the full similarity range (never used in practice since
+  # no activities have doc_year >= 3001, but required by the config schema).
+  test_set_similarity_bins:
+    - low: 0.0
+      hi: 1.1  # > 1.0 so the bin covers all possible Tanimoto similarities
+
+  split_val_like_test: true
+  n_jobs: -1   # parallel workers; -1 = use all cores
   activity_limit: null
-  filter_val_and_test_sets:  null  # We want to keep all the data as split will happen later
+  filter_val_and_test_sets: null  # Keep all data; split is assigned externally in step 2

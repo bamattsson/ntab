@@ -8,24 +8,29 @@ chembl_requester:
 out_dir: out
 
 pipeline:
-  tanimoto_threshold: 0.35  # compounds with max Tanimoto similarity >= this are excluded from val/test; null disables the filter
+  test_set_similarity_bins:
+  # either low and hi, which means the range [low, hi)
+  # or equal, which acts like =equal
+    - low: 0
+      hi: 0.35
+    - low: 0.35
+      hi: 0.5
+    - low: 0.5
+      hi: 0.7
+    - low: 0.7
+      hi: 1.0
+    - equal: 1.0
 
   # Year boundaries for the time split.
-  # - doc_year < year_val_start                              → train
-  # - year_val_start <= doc_year < year_test_start          → val (split by compound novelty)
-  # - doc_year >= year_test_start                           → test (novel cpds) or discard (not novel)
   year_val_start: 2022
   year_test_start: 2023
 
-  # Set to true to retain "discard_not_novel" rows (test-year compounds that are
-  # not novel — either due to the Tanimoto filter or because they first appeared
-  # before the cutoff year) in the output.
-  keep_discard_not_novel: false
+  split_val_like_test: true  # should we split val by similarity like test? Useful to ensure no leakage in your val set
 
   n_jobs: -1   # parallel workers for fingerprint and compounds similarity computation: -1 -> use all cores
   activity_limit: null  # set to an integer (e.g. 10000) for a smaller test run; null = full dataset
   filter_val_and_test_sets:  # Disable by setting to null/false
-    apply_to: ["test", "val_novel", "val_not_novel"]  # which splits you want to apply this filter to
+    apply_to: ["test", "val"]  # which splits you want to apply this filter to
     only_equal_relation: true  # Whether to only keep pchembl_relation of `=`
     min_std: 0.5  # Assays with fewer than this standard deviation are removed
     min_cpd_per_assay: 10  # Assays with fewer than this number of compounds are removed

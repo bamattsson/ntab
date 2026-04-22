@@ -13,6 +13,18 @@ class ChEMBLConfig:
 
 
 @dataclass
+class SimilarityBin:
+    """Defines one similarity bin for test/val split assignment.
+
+    Use (low, hi) for a half-open range [low, hi), or equal for an exact match.
+    """
+
+    low: float | None = None
+    hi: float | None = None
+    equal: float | None = None
+
+
+@dataclass
 class AssayFilterConfig:
     apply_to: list[str]
     only_equal_relation: bool
@@ -23,10 +35,8 @@ class AssayFilterConfig:
 
 @dataclass
 class PipelineConfig:
-    tanimoto_threshold: (
-        float | None
-    )  # None disables similarity filtering (all candidates treated as novel)
-    keep_discard_not_novel: bool
+    test_set_similarity_bins: list[SimilarityBin]
+    split_val_like_test: bool = True  # if True, val gets same sim bins as test; if False, val is a single "val" split
     year_val_start: int = 2022  # doc_year >= this is val; doc_year < this is train
     year_test_start: int = (
         2023  # doc_year >= this is test; year_val_start <= doc_year < this is val
@@ -63,7 +73,14 @@ def load_config(path: str | Path) -> Config:
     filter_raw = pipeline_raw.pop("filter_val_and_test_sets", None)
     filter_config = AssayFilterConfig(**filter_raw) if filter_raw else None
 
-    pipeline = PipelineConfig(**pipeline_raw, filter_val_and_test_sets=filter_config)
+    bins_raw = pipeline_raw.pop("test_set_similarity_bins", [])
+    similarity_bins = [SimilarityBin(**b) for b in bins_raw]
+
+    pipeline = PipelineConfig(
+        **pipeline_raw,
+        test_set_similarity_bins=similarity_bins,
+        filter_val_and_test_sets=filter_config,
+    )
 
     out_dir: str = raw.get("out_dir", "out")
 

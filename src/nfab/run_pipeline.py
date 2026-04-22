@@ -14,45 +14,65 @@ import pandas as pd
 from nfab.affinity_utils import add_pchembl_columns
 from nfab.assay_filter import filter_assay_types
 from nfab.chembl_requester import ChEMBLRequester
-from nfab.config import load_config
+from nfab.config import SimilarityBin, load_config
 from nfab.similarity import (
     compute_ecfp4_fingerprints,
     compute_similarity_for_cutoff_year,
 )
 
 
+def _bin_label(b: SimilarityBin) -> str:
+    """Return the similarity bin label suffix, e.g. 'sim_0.00_0.35' or 'sim_1.00'."""
+    if b.equal is not None:
+        return f"sim_{b.equal:.2f}"
+    return f"sim_{b.low:.2f}_{b.hi:.2f}"
+
+
+def _sim_matches_bin(sim: pd.Series, b: SimilarityBin) -> pd.Series:
+    """Return a boolean mask selecting rows whose similarity falls in the given bin."""
+    if b.equal is not None:
+        return sim == b.equal
+    return (sim >= b.low) & (sim < b.hi)
+
+
 def assign_splits(
     activities_df: pd.DataFrame,
     compounds_df: pd.DataFrame,
-    year_val_start: int = 2022,
-    year_test_start: int = 2023,
+    year_val_start: int,
+    year_test_start: int,
+    test_bins: list[SimilarityBin],
+    split_val_like_test: bool = True,
 ) -> pd.DataFrame:
-    """Assign a split label to each activity row based on doc_year and novelty.
+    """Assign a split label to each activity row based on doc_year and similarity bin.
 
-    Split logic (with default year_val_start=2022, year_test_start=2023):
-    - doc_year < year_val_start                                                    → "train"
-    - year_val_start <= doc_year < year_test_start and is_novel == True            → "val_novel"
-    - year_val_start <= doc_year < year_test_start and is_novel != True (or NaN)   → "val_not_novel"
-    - doc_year >= year_test_start and is_novel == True                             → "test"
-    - doc_year >= year_test_start and is_novel != True (or NaN)                   → "discard_not_novel"
-    - doc_year is null                                                              → None
+    Split logic:
+    - doc_year < year_val_start                           → "train"
+    - doc_year is null                                    → None
+    - year_val_start <= doc_year < year_test_start:
+        split_val_like_test=True  → "val_{bin_label}" per matching bin; unmatched → None
+        split_val_like_test=False → "val"
+    - doc_year >= year_test_start                         → "test_{bin_label}" per matching bin; unmatched → None
 
-    Novelty is read from compounds_df columns named ``is_novel_{year_val_start}``
-    and ``is_novel_{year_test_start}``, computed in run_pipeline from
-    ``compute_similarity_for_cutoff_year`` output via ``max_sim < threshold``.
-    Reference-set compounds (cpd_earliest_year < cutoff) have max_sim=1.0 and
-    are therefore treated as not novel for any threshold < 1.0.
+    Bin labels are derived from the SimilarityBin definitions, e.g.:
+    - SimilarityBin(low=0.0, hi=0.35) → "sim_0.00_0.35"
+    - SimilarityBin(equal=1.0)        → "sim_1.00"
+
+    Similarity is looked up from compounds_df columns:
+    - max_sim_pre_{year_test_start} for test rows
+    - max_sim_pre_{year_val_start} for val rows (only when split_val_like_test=True)
 
     Args:
         activities_df: Activity data with at least columns:
             - ligand_chembl_id
             - doc_year (numeric, nullable)
         compounds_df: DataFrame indexed by chembl_id with columns:
-            - is_novel_{year_val_start} (bool or pd.NA)
-            - is_novel_{year_test_start} (bool or pd.NA)
-            Derived from max_sim_pre_{year} < threshold in run_pipeline.
+            - max_sim_pre_{year_test_start} (float)
+            - max_sim_pre_{year_val_start} (float, required when split_val_like_test=True)
         year_val_start: First doc_year included in val; everything earlier is train.
         year_test_start: First doc_year included in test; must be > year_val_start.
+        test_bins: Similarity bins defining the test (and optionally val) split labels.
+        split_val_like_test: If True, apply the same bins to val rows. If False, all val
+            rows get the single label "val".
 
     Returns:
         activities_df with a "split" column added (str, nullable).
@@ -65,24 +85,24 @@ def assign_splits(
 
     mask_val = (year >= year_val_start) & (year < year_test_start)
     if mask_val.any():
-        # .eq(True) returns a proper bool series: True → True, False/NA → False
-        is_novel_val = (
-            result["ligand_chembl_id"]
-            .map(compounds_df[f"is_novel_{year_val_start}"])
-            .eq(True)
-        )
-        split[mask_val & is_novel_val] = "val_novel"
-        split[mask_val & ~is_novel_val] = "val_not_novel"
+        if split_val_like_test:
+            sim_val = result["ligand_chembl_id"].map(
+                compounds_df[f"max_sim_pre_{year_val_start}"]
+            )
+            for b in test_bins:
+                bin_mask = mask_val & _sim_matches_bin(sim_val, b)
+                split[bin_mask] = f"val_{_bin_label(b)}"
+        else:
+            split[mask_val] = "val"
 
     mask_test = year >= year_test_start
     if mask_test.any():
-        is_novel_test = (
-            result["ligand_chembl_id"]
-            .map(compounds_df[f"is_novel_{year_test_start}"])
-            .eq(True)
+        sim_test = result["ligand_chembl_id"].map(
+            compounds_df[f"max_sim_pre_{year_test_start}"]
         )
-        split[mask_test & is_novel_test] = "test"
-        split[mask_test & ~is_novel_test] = "discard_not_novel"
+        for b in test_bins:
+            bin_mask = mask_test & _sim_matches_bin(sim_test, b)
+            split[bin_mask] = f"test_{_bin_label(b)}"
 
     split = split.where(split.notna(), other=None)
     result["split"] = split
@@ -186,7 +206,6 @@ def main() -> None:
 
     year_test = config.pipeline.year_test_start
     year_val = config.pipeline.year_val_start
-    threshold = config.pipeline.tanimoto_threshold
 
     sim_test = compute_similarity_for_cutoff_year(
         compounds_df=compounds_df,
@@ -203,23 +222,14 @@ def main() -> None:
         n_jobs=config.pipeline.n_jobs,
     )
 
-    # Derive is_novel from similarity; when threshold is None all compounds are novel
-    for year, sim_df in [(year_test, sim_test), (year_val, sim_val)]:
-        if threshold is not None:
-            sim_df[f"is_novel_{year}"] = sim_df[f"max_sim_pre_{year}"] < threshold
-        else:
-            sim_df[f"is_novel_{year}"] = True
-
-    novel_test = sim_test[f"is_novel_{year_test}"]
     print(
-        f"  {year_test} cutoff (test) — novel: {(novel_test == True).sum()}, not novel: {(novel_test == False).sum()}"
+        f"  {year_test} cutoff (test) — sim range: [{sim_test[f'max_sim_pre_{year_test}'].min():.3f}, {sim_test[f'max_sim_pre_{year_test}'].max():.3f}]"
     )
-    novel_val = sim_val[f"is_novel_{year_val}"]
     print(
-        f"  {year_val} cutoff (val) — novel: {(novel_val == True).sum()}, not novel: {(novel_val == False).sum()}"
+        f"  {year_val} cutoff (val) — sim range: [{sim_val[f'max_sim_pre_{year_val}'].min():.3f}, {sim_val[f'max_sim_pre_{year_val}'].max():.3f}]"
     )
 
-    # Add similarity and novelty columns to compounds_df and save as intermediate
+    # Add similarity columns to compounds_df and save as intermediate
     compounds_df = compounds_df.set_index("chembl_id")
     compounds_df = compounds_df.join(sim_test).join(sim_val)
     compounds_df.to_parquet(intermediate_dir / "compounds_with_novelty.parquet")
@@ -257,6 +267,8 @@ def main() -> None:
         compounds_df,
         year_val_start=year_val,
         year_test_start=year_test,
+        test_bins=config.pipeline.test_set_similarity_bins,
+        split_val_like_test=config.pipeline.split_val_like_test,
     )
     print("  Split value counts (including NaN):")
     print(activities_df["split"].value_counts(dropna=False).to_string())
@@ -314,8 +326,6 @@ def main() -> None:
     )
 
     activities_df = activities_df[activities_df["split"].notna()]
-    if not config.pipeline.keep_discard_not_novel:
-        activities_df = activities_df[activities_df["split"] != "discard_not_novel"]
 
     final_col_order = [
         "target_chembl_id",

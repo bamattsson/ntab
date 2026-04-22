@@ -52,7 +52,7 @@ Writes preprocessed data to `out/data_preprocessing/`:
 |---|---|
 | `fingerprints_ecfp4.npz` | ECFP4 count fingerprints, shape (N_compounds, 2048) |
 | `mol_properties.npz` | 12 normalised physicochemical properties + scaler |
-| `train.npz`, `val.npz`, `test.npz` | Split indices, labels, assay IDs |
+| `train.npz`, `val.npz`, `test.npz` | Split indices, labels, assay IDs (val/test combine all matching `val_sim_*`/`test_sim_*` bins) |
 | `target_index.json` | `uniprot_id → integer index` mapping |
 | `meta.json` | `n_targets`, `n_standard_types`, `fp_size`, `fp_type` |
 | `oov_target_mapping.json` | OOV target → nearest training target (if any OOV exist) |
@@ -80,7 +80,7 @@ python -m nfab_baseline.predict_on_benchmark \
     --data-dir out_baseline/data_preprocessing \
     --activities out/activities.parquet \
     --targets out/targets.parquet \
-    --splits test \
+    --splits test_sim_0.00_0.35 test_sim_0.35_0.50 test_sim_0.50_0.70 test_sim_0.70_1.00 test_sim_1.00 \
     --output predictions.csv
 ```
 
