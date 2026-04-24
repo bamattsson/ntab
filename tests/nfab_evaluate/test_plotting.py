@@ -121,8 +121,11 @@ def test_compute_model_stats_shape():
         "n_m",
         "n_a",
         "pearson_r",
-        "ci_low",
-        "ci_high",
+        "pearson_r_ci_low",
+        "pearson_r_ci_high",
+        "mae",
+        "mae_ci_low",
+        "mae_ci_high",
     }
 
 

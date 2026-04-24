@@ -8,12 +8,71 @@ from scipy.stats import pearsonr
 MIN_ASSAY_SIZE: int = 10
 
 
+def mae_per_assay(
+    preds: np.ndarray,
+    labels: np.ndarray,
+    assay_ids: list[str],
+    min_assay_size: int = MIN_ASSAY_SIZE,
+    n_bootstrap: None | int = None,
+    seed_bootstrap: None | int = None,
+) -> tuple[float, float | None, float | None]:
+    """Compute macro-average MAE across assays (mean_assays(mean_activities(|error|))).
+
+    Each qualifying assay contributes equally regardless of size. Assays with
+    fewer than min_assay_size samples are excluded.
+
+    Args:
+        preds: Predicted values, shape (N,).
+        labels: True values, shape (N,).
+        assay_ids: Assay identifier per sample, length N.
+        min_assay_size: Assays with fewer than this many samples are excluded.
+        n_bootstrap: If set, compute a 95% bootstrap confidence interval using
+            this many resamples (resampling at the assay level).
+
+    Returns:
+        Tuple of (mae, ci_low, ci_high) where mae is the macro-average MAE across
+        qualifying assays (NaN if none qualify), and ci_low/ci_high are the 2.5th
+        and 97.5th bootstrap percentiles, or None if n_bootstrap was not provided.
+    """
+    assay_to_indices: dict[str, list[int]] = {}
+    for i, assay in enumerate(assay_ids):
+        assay_to_indices.setdefault(assay, []).append(i)
+
+    maes: list[float] = []
+    for assay, indices in sorted(assay_to_indices.items()):
+        if len(indices) < min_assay_size:
+            continue
+        idx = np.array(indices)
+        assay_mae = float(np.mean(np.abs(preds[idx] - labels[idx])))
+        if not math.isfinite(assay_mae):
+            continue
+        maes.append(assay_mae)
+
+    if not maes:
+        return float("nan"), None, None
+
+    maes_a = np.array(maes)
+    mae = float(maes_a.mean())
+
+    if n_bootstrap is None:
+        return mae, None, None
+
+    # Bootstrap a 95% CI by resampling assays
+    rng = np.random.default_rng(seed=seed_bootstrap)
+    num_assays = len(maes_a)
+    boot_idx = rng.integers(0, num_assays, size=(n_bootstrap, num_assays))
+    boot_means = maes_a[boot_idx].mean(axis=1)
+    ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
+    return mae, float(ci_low), float(ci_high)
+
+
 def pearson_r_per_assay(
     preds: np.ndarray,
     labels: np.ndarray,
     assay_ids: list[str],
     min_assay_size: int = MIN_ASSAY_SIZE,
     n_bootstrap: None | int = None,
+    seed_bootstrap: None | int = None,
     weighted: bool = False,
 ) -> tuple[float, float | None, float | None]:
     """Compute mean Pearson r across assays, skipping assays below min_assay_size.
@@ -66,7 +125,7 @@ def pearson_r_per_assay(
         return pearson_r, None, None
 
     # Bootstrap a 95% CI by resampling assays
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=seed_bootstrap)
     num_assays = len(rs_a)
     boot_idx = rng.integers(0, num_assays, size=(n_bootstrap, num_assays))
     boot_rs = rs_a[boot_idx]  # (n_bootstrap, num_assays)

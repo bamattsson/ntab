@@ -6,7 +6,7 @@ from collections import Counter
 
 import pandas as pd
 
-from nfab_evaluate.metrics import pearson_r_per_assay
+from nfab_evaluate.metrics import mae_per_assay, pearson_r_per_assay
 
 
 def _parse_split_label(split: str) -> tuple[float, float, str]:
@@ -74,19 +74,20 @@ def compute_model_stats(
     min_assay_size: int = 10,
     n_bootstrap: int = 1000,
 ) -> pd.DataFrame:
-    """Compute mean Pearson r per similarity bin for a single model.
+    """Compute per-bin Pearson r and MAE for a single model.
 
     Args:
         merged: Output of load_predictions — test activities with pred_pchembl.
         bins: List of (lo, hi, display_label) tuples as returned by
             _parse_split_label, one per similarity bin.
-        min_assay_size: Minimum compounds per assay to include in Pearson r.
+        min_assay_size: Minimum compounds per assay to include in metrics.
         n_bootstrap: Number of bootstrap resamples for the 95% CI.
 
     Returns:
         DataFrame with columns:
             display_label, n_m (molecules), n_a (qualifying assays),
-            pearson_r, ci_low, ci_high.
+            pearson_r, pearson_r_ci_low, pearson_r_ci_high,
+            mae, mae_ci_low, mae_ci_high.
     """
     records = []
     for lo, hi, display_label in bins:
@@ -99,13 +100,24 @@ def compute_model_stats(
         assay_keys = (
             subset["assay_chembl_id"] + "__" + subset["standard_type"]
         ).tolist()
+        preds = subset["pred_pchembl"].values
+        labels = subset["pchembl_value_filled"].values
 
-        r, ci_low, ci_high = pearson_r_per_assay(
-            preds=subset["pred_pchembl"].values,
-            labels=subset["pchembl_value_filled"].values,
+        r, r_ci_low, r_ci_high = pearson_r_per_assay(
+            preds=preds,
+            labels=labels,
             assay_ids=assay_keys,
             min_assay_size=min_assay_size,
             n_bootstrap=n_bootstrap,
+            seed_bootstrap=42,
+        )
+        mae, mae_ci_low, mae_ci_high = mae_per_assay(
+            preds=preds,
+            labels=labels,
+            assay_ids=assay_keys,
+            min_assay_size=min_assay_size,
+            n_bootstrap=n_bootstrap,
+            seed_bootstrap=42,
         )
 
         counts = Counter(assay_keys)
@@ -116,8 +128,11 @@ def compute_model_stats(
                 n_m=len(subset),
                 n_a=n_a,
                 pearson_r=r,
-                ci_low=ci_low if ci_low is not None else float("nan"),
-                ci_high=ci_high if ci_high is not None else float("nan"),
+                pearson_r_ci_low=r_ci_low if r_ci_low is not None else float("nan"),
+                pearson_r_ci_high=r_ci_high if r_ci_high is not None else float("nan"),
+                mae=mae,
+                mae_ci_low=mae_ci_low if mae_ci_low is not None else float("nan"),
+                mae_ci_high=mae_ci_high if mae_ci_high is not None else float("nan"),
             )
         )
     return pd.DataFrame(records)

@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from nfab_evaluate.metrics import pearson_r_per_assay
+from nfab_evaluate.metrics import mae_per_assay, pearson_r_per_assay
 
 
 def _make_data(n: int = 20, seed: int = 0) -> tuple[np.ndarray, np.ndarray, list[str]]:
@@ -58,3 +58,44 @@ def test_weighted_differs_from_macro():
 
     # macro average is closer to 0 (equal weight); weighted skews toward large assay (r≈+1)
     assert r_weighted > r_macro
+
+
+# ---------------------------------------------------------------------------
+# mae_per_assay
+# ---------------------------------------------------------------------------
+
+
+def test_mae_perfect_predictions():
+    labels = np.array([1.0] * 10 + [2.0] * 10, dtype=float)
+    preds = labels.copy()
+    assay_ids = ["a"] * 10 + ["b"] * 10
+    mae, ci_low, ci_high = mae_per_assay(preds, labels, assay_ids)
+    assert mae == 0.0
+    assert ci_low is None
+
+
+def test_mae_known_value():
+    # assay_a: errors all 1.0 → MAE = 1.0
+    # assay_b: errors all 2.0 → MAE = 2.0
+    # macro MAE = 1.5
+    labels = np.zeros(20)
+    preds = np.array([1.0] * 10 + [2.0] * 10)
+    assay_ids = ["a"] * 10 + ["b"] * 10
+    mae, _, _ = mae_per_assay(preds, labels, assay_ids)
+    assert math.isclose(mae, 1.5)
+
+
+def test_mae_below_min_assay_size_returns_nan():
+    preds = np.array([1.0, 2.0, 3.0])
+    labels = np.zeros(3)
+    assay_ids = ["a", "a", "a"]
+    mae, ci_low, ci_high = mae_per_assay(preds, labels, assay_ids, min_assay_size=10)
+    assert math.isnan(mae)
+    assert ci_low is None
+
+
+def test_mae_bootstrap_ci_ordered():
+    preds, labels, assay_ids = _make_data(n=40)
+    mae, ci_low, ci_high = mae_per_assay(preds, labels, assay_ids, n_bootstrap=200)
+    assert ci_low is not None and ci_high is not None
+    assert ci_low <= mae <= ci_high
