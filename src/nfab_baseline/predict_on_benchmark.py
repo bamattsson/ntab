@@ -234,7 +234,9 @@ def _print_metrics(
             n_bootstrap=n_bootstrap,
             weighted=weighted,
         )
-        ci_str = f" [{ci_low_all:.4f}, {ci_high_all:.4f}]" if ci_low_all is not None else ""
+        ci_str = (
+            f" [{ci_low_all:.4f}, {ci_high_all:.4f}]" if ci_low_all is not None else ""
+        )
         print(
             f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{ci_str}"
             f"  (n_rows = {len(df):,}, n_assays = {n_assays_all})"

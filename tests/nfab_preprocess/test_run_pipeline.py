@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from nfab_preprocess.config import SimilarityBin
 from nfab_preprocess.run_pipeline import assign_splits
@@ -38,21 +37,15 @@ def test_train_rows() -> None:
         {"ligand_chembl_id": ["A", "B"], "doc_year": [2019, 2021]}
     )
     compounds = _make_compounds_df(["A", "B"], [0.1, 0.9], [0.1, 0.9])
-    result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS
-    )
+    result = assign_splits(activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS)
     assert result["split"].tolist() == ["train", "train"]
 
 
 def test_null_doc_year() -> None:
     """doc_year is null → None."""
-    activities = pd.DataFrame(
-        {"ligand_chembl_id": ["A"], "doc_year": [None]}
-    )
+    activities = pd.DataFrame({"ligand_chembl_id": ["A"], "doc_year": [None]})
     compounds = _make_compounds_df(["A"], [0.1], [0.1])
-    result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS
-    )
+    result = assign_splits(activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS)
     assert result["split"].iloc[0] is None
 
 
@@ -65,9 +58,7 @@ def test_test_range_bin() -> None:
         }
     )
     compounds = _make_compounds_df(["A", "B"], [0.2, 0.4], [0.0, 0.0])
-    result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS
-    )
+    result = assign_splits(activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS)
     splits = result.set_index("ligand_chembl_id")["split"].to_dict()
     assert splits["A"] == "test_sim_0.00_0.35"
     assert splits["B"] == "test_sim_0.35_0.50"
@@ -75,26 +66,18 @@ def test_test_range_bin() -> None:
 
 def test_test_exact_bin() -> None:
     """Test-year row with sim==1.0 lands in the equal bin."""
-    activities = pd.DataFrame(
-        {"ligand_chembl_id": ["A"], "doc_year": [YEAR_TEST]}
-    )
+    activities = pd.DataFrame({"ligand_chembl_id": ["A"], "doc_year": [YEAR_TEST]})
     compounds = _make_compounds_df(["A"], [1.0], [0.0])
-    result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS
-    )
+    result = assign_splits(activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS)
     assert result["split"].iloc[0] == "test_sim_1.00"
 
 
 def test_test_sim_not_in_any_bin_gets_none() -> None:
     """A test-year compound whose sim doesn't match any bin → None."""
-    activities = pd.DataFrame(
-        {"ligand_chembl_id": ["A"], "doc_year": [YEAR_TEST]}
-    )
+    activities = pd.DataFrame({"ligand_chembl_id": ["A"], "doc_year": [YEAR_TEST]})
     # sim=0.8 is not in [0,0.35), [0.35,0.5), or =1.0
     compounds = _make_compounds_df(["A"], [0.8], [0.0])
-    result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS
-    )
+    result = assign_splits(activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS)
     assert result["split"].iloc[0] is None
 
 
@@ -105,7 +88,11 @@ def test_val_split_val_like_test_true() -> None:
     )
     compounds = _make_compounds_df(["A", "B"], [0.0, 0.0], [0.1, 1.0])
     result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS,
+        activities,
+        compounds,
+        YEAR_VAL,
+        YEAR_TEST,
+        TEST_BINS,
         split_val_like_test=True,
     )
     splits = result.set_index("ligand_chembl_id")["split"].to_dict()
@@ -120,7 +107,11 @@ def test_val_split_val_like_test_false() -> None:
     )
     compounds = _make_compounds_df(["A", "B"], [0.0, 0.0], [0.1, 0.9])
     result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS,
+        activities,
+        compounds,
+        YEAR_VAL,
+        YEAR_TEST,
+        TEST_BINS,
         split_val_like_test=False,
     )
     assert result["split"].tolist() == ["val", "val"]
@@ -135,21 +126,15 @@ def test_repeated_compound_gets_consistent_split() -> None:
         }
     )
     compounds = _make_compounds_df(["mol_A"], [0.2], [0.0])
-    result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS
-    )
+    result = assign_splits(activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS)
     assert result["split"].nunique() == 1
     assert result["split"].iloc[0] == "test_sim_0.00_0.35"
 
 
 def test_range_bin_boundary_exclusive_hi() -> None:
     """The upper bound of a range bin is exclusive: sim==hi falls into the next bin."""
-    activities = pd.DataFrame(
-        {"ligand_chembl_id": ["A"], "doc_year": [YEAR_TEST]}
-    )
+    activities = pd.DataFrame({"ligand_chembl_id": ["A"], "doc_year": [YEAR_TEST]})
     # sim=0.35 should land in [0.35, 0.5), not [0, 0.35)
     compounds = _make_compounds_df(["A"], [0.35], [0.0])
-    result = assign_splits(
-        activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS
-    )
+    result = assign_splits(activities, compounds, YEAR_VAL, YEAR_TEST, TEST_BINS)
     assert result["split"].iloc[0] == "test_sim_0.35_0.50"

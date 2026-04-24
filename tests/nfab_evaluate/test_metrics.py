@@ -1,7 +1,6 @@
 import math
 
 import numpy as np
-import pytest
 
 from nfab_evaluate.metrics import pearson_r_per_assay
 
@@ -27,7 +26,9 @@ def test_below_min_assay_size_returns_nan():
     preds = np.array([1.0, 2.0, 3.0])
     labels = np.array([1.0, 2.0, 3.0])
     assay_ids = ["a", "a", "a"]
-    r, ci_low, ci_high = pearson_r_per_assay(preds, labels, assay_ids, min_assay_size=10)
+    r, ci_low, ci_high = pearson_r_per_assay(
+        preds, labels, assay_ids, min_assay_size=10
+    )
     assert math.isnan(r)
     assert ci_low is None
     assert ci_high is None

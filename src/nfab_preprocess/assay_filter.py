@@ -142,15 +142,14 @@ def filter_assay_types(
         Row order within unaffected splits is preserved; filtered split rows
         are appended at the end.
     """
+
     def _matches(s: object) -> bool:
         return pd.notna(s) and any(str(s).startswith(p) for p in apply_to)
 
     mask_affected = activities_df["split"].apply(_matches)
     df_unaffected = activities_df[~mask_affected].copy()
 
-    matching_splits = [
-        s for s in activities_df["split"].unique() if _matches(s)
-    ]
+    matching_splits = [s for s in activities_df["split"].unique() if _matches(s)]
 
     filtered_splits = []
     for split in matching_splits:

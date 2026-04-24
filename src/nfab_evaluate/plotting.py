@@ -4,7 +4,6 @@ import pathlib
 import warnings
 from collections import Counter
 
-import numpy as np
 import pandas as pd
 
 from nfab_evaluate.metrics import pearson_r_per_assay
@@ -46,7 +45,9 @@ def load_predictions(
     """
     preds = pd.read_csv(
         pred_path,
-        usecols=lambda c: c in {"assay_id", "ligand_name", "standard_type", "pred_pchembl"},
+        usecols=lambda c: (
+            c in {"assay_id", "ligand_name", "standard_type", "pred_pchembl"}
+        ),
     )
 
     merged = test_activities.merge(
@@ -95,7 +96,9 @@ def compute_model_stats(
         subset = merged[merged["split"] == split_label].dropna(
             subset=["pred_pchembl", "pchembl_value_filled"]
         )
-        assay_keys = (subset["assay_chembl_id"] + "__" + subset["standard_type"]).tolist()
+        assay_keys = (
+            subset["assay_chembl_id"] + "__" + subset["standard_type"]
+        ).tolist()
 
         r, ci_low, ci_high = pearson_r_per_assay(
             preds=subset["pred_pchembl"].values,

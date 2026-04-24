@@ -4,7 +4,7 @@
 
 **Paper**: [coming soon]() | **Dataset**: [coming soon]()
 
-Code for generating a novelty-filtered and time-split benchmark for protein-ligand binding affinity prediction.
+A novelty-filtered, time-split benchmark for protein-ligand binding affinity prediction, built from ChEMBL binding data.
 
 ## Overview
 
@@ -15,7 +15,32 @@ The benchmark is constructed from ChEMBL binding affinity data using two complem
 
 Val and test assays are further filtered to retain only well-characterised (assay, measurement-type) groups: minimum 10 unique compounds, pChEMBL SD ≥ 0.5, equality-relation measurements only, and at most one assay per publication.
 
-The repo also contains code for a ligand-only baseline ML model, which can be used as a probe for what performance is possible to get with pure memorisation, for more information on how to use this read [docs/baseline.md](docs/baseline.md).
+## Evaluating your model
+
+### 1. Download the dataset
+
+Download `activities.parquet` and `targets.parquet` from [coming soon](). The download also includes predictions from the baseline models, which you can use as a reference when comparing your model's performance.
+
+### 2. Train your model
+
+Use all rows where `split = train`.
+
+### 3. Generate predictions
+
+Generate a prediction for every row where `split` starts with `test_`. Save these as a CSV with the following columns:
+
+| Column | Description |
+|---|---|
+| `assay_id` | ChEMBL assay ID |
+| `ligand_name` | ChEMBL compound ID |
+| `standard_type` | Measurement type (`Ki`, `Kd`, or `IC50`) |
+| `pred_pchembl` | Predicted pChEMBL value |
+
+Rows not present in the CSV are filled with `pred_pchembl = 6.0` (1 µM) when computing metrics.
+
+### 4. Analyse results
+
+Open `calculate_benchmark_performance.ipynb`, set `ACTIVITIES_PATH` and `MODELS`, and run all cells. The notebook computes mean Pearson r per similarity bin with bootstrap confidence intervals and produces a summary plot.
 
 ## Installation
 
@@ -31,32 +56,14 @@ source .venv/bin/activate
 ### conda
 
 ```bash
-conda create -n nfab python=3.10
+conda create -n nfab python=3.11
 conda activate nfab
 pip install -e .
 ```
 
-## Reproducing the data
+## Dataset
 
-### Prerequisites: Set up ChEMBL
-
-The benchmark is generated from a local ChEMBL PostgreSQL database. See [docs/chembl_setup.md](docs/chembl_setup.md) for instructions on setting up this database locally.
-
-### 1. Configure the pipeline
-
-Add your ChEMBL database credentials to `configs/benchmark.yaml`.
-
-### 2. Run the pipeline
-
-```bash
-python -m nfab.run_pipeline --config configs/benchmark.yaml
-```
-
-The pipeline runs in 8 steps and writes intermediate files to `out/intermediate/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 45 minutes on a machine with 16 cores and requires ~40 GB of RAM.
-
-## Output files
-
-### `out/activities.parquet`
+### `activities.parquet`
 
 One row per activity measurement. Columns:
 
@@ -96,25 +103,11 @@ Test and val rows are labelled by which similarity bin their compound falls into
 
 Rows with no `doc_year` are excluded from all splits. Rows whose similarity does not fall into any configured bin are also excluded. Bins are configurable via `test_set_similarity_bins` in the pipeline config.
 
-### `out/targets.parquet`
+### `targets.parquet`
 
 One row per single-protein target. Columns: `target_chembl_id`, `uniprot_id`, `gene_name`, `target_class`, `target_family`, `organism`, `target_name`, `sequence`.
 
-### `out/intermediate/`
-
-Intermediate files written between steps for inspection and debugging:
-
-| File | Contents |
-|---|---|
-| `activities_raw.parquet` | Raw activity query results from ChEMBL |
-| `compounds_raw.parquet` | Compounds (SMILES, earliest year, MW) filtered to the active activities |
-| `targets_raw.parquet` | Single-protein targets with sequence and classification |
-| `assay_docs.parquet` | Document metadata per assay: `assay_chembl_id`, `doc_chembl_id`, `doi`, `title`, `src_description` |
-| `fingerprints.npz` | ECFP4 fingerprint matrix (`fps`) and compound IDs (`names`) |
-| `compounds_with_novelty.parquet` | Compounds enriched with similarity columns (`max_sim_pre_*`, `most_sim_cpd_pre_*`) for both the 2022 and 2023 cutoffs |
-| `split_assignments.parquet` | Activities with split labels before final column selection and filtering |
-
-## Data inclusion criteria
+### Data inclusion criteria
 
 The following filters are applied when querying ChEMBL:
 
@@ -134,6 +127,14 @@ After ChEMBL retrieval, three further filters determine which rows appear in the
 - **Similarity bin (test/val only)**: rows whose compound similarity does not fall into any configured bin are excluded. All compounds are retained when the bins cover the full [0, 1.0] range.
 - **Assay quality (test/val only)**: (assay, measurement-type) groups are removed if they have fewer than 10 unique compounds, a pChEMBL SD below 0.5, non-equality relations, or share a publication with another passing assay. Configurable via `filter_val_and_test_sets` in the config.
 
+## Reproducing the benchmark
+
+To regenerate the dataset from ChEMBL, see [docs/preprocess.md](docs/preprocess.md).
+
+## Baseline model
+
+A ligand-only MLP baseline is included as a probe for what performance is achievable through pure ligand memorisation. For training and inference instructions see [docs/baseline.md](docs/baseline.md).
+
 ## Citation
 
 If you use NFAB in your research, please cite:
@@ -148,18 +149,11 @@ If you use NFAB in your research, please cite:
 }
 ```
 
-## Running tests
+## Development
 
 ```bash
-uv sync --extra dev
+uv sync --extra baseline --extra preprocess --extra dev
 uv run pytest
-```
-
-## Linting
-
-This project uses [ruff](https://github.com/astral-sh/ruff) for linting and formatting:
-
-```bash
 uv run ruff check src/ tests/
 uv run ruff format src/ tests/
 ```
