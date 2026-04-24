@@ -25,7 +25,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from nfab_baseline.constants import MIN_ASSAY_SIZE
 from nfab_baseline.model import AffinityModel
-from nfab_baseline.model_utils import pearson_r_per_assay
+from nfab_evaluate.metrics import pearson_r_per_assay
 from nfab_baseline.preprocess_pred_data import preprocess_for_inference
 
 OUTPUT_COLUMNS = [

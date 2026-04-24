@@ -28,7 +28,7 @@ The primary validation metric is size-weighted mean Pearson r across assays
 Install with the `[model]` extras (includes torch, lightning, biopython, etc.):
 
 ```bash
-uv sync --extra model
+uv sync --extra baseline
 source .venv/bin/activate
 ```
 

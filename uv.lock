@@ -2106,55 +2106,57 @@ name = "nfab"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "matplotlib" },
+    { name = "notebook" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pandas", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "psycopg2-binary" },
     { name = "pyarrow" },
-    { name = "pyyaml" },
-    { name = "rdkit" },
-    { name = "tqdm" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
 [package.optional-dependencies]
+baseline = [
+    { name = "biopython" },
+    { name = "jsonargparse", extra = ["signatures"] },
+    { name = "lightning" },
+    { name = "torch" },
+]
 dev = [
     { name = "pytest" },
     { name = "pytest-mock" },
     { name = "ruff" },
 ]
-model = [
-    { name = "biopython" },
-    { name = "jsonargparse", extra = ["signatures"] },
-    { name = "lightning" },
-    { name = "matplotlib" },
-    { name = "notebook" },
-    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "torch" },
+preprocess = [
+    { name = "psycopg2-binary" },
+    { name = "pyyaml" },
+    { name = "rdkit" },
+    { name = "tqdm" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "biopython", marker = "extra == 'model'", specifier = ">=1.80" },
-    { name = "jsonargparse", extras = ["signatures"], marker = "extra == 'model'", specifier = ">=4.27.7" },
-    { name = "lightning", marker = "extra == 'model'", specifier = ">=2.0" },
-    { name = "matplotlib", marker = "extra == 'model'" },
-    { name = "notebook", marker = "extra == 'model'" },
+    { name = "biopython", marker = "extra == 'baseline'", specifier = ">=1.80" },
+    { name = "jsonargparse", extras = ["signatures"], marker = "extra == 'baseline'", specifier = ">=4.27.7" },
+    { name = "lightning", marker = "extra == 'baseline'", specifier = ">=2.0" },
+    { name = "matplotlib" },
+    { name = "notebook" },
     { name = "numpy", specifier = ">=1.24" },
     { name = "pandas", specifier = ">=2.0" },
-    { name = "psycopg2-binary" },
+    { name = "psycopg2-binary", marker = "extra == 'preprocess'" },
     { name = "pyarrow", specifier = ">=14.0" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-mock", marker = "extra == 'dev'" },
-    { name = "pyyaml" },
-    { name = "rdkit", specifier = ">=2025.9.6" },
+    { name = "pyyaml", marker = "extra == 'preprocess'" },
+    { name = "rdkit", marker = "extra == 'preprocess'", specifier = ">=2025.9.6" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "scipy", marker = "extra == 'model'" },
-    { name = "torch", marker = "extra == 'model'", specifier = ">=2.0,<2.6" },
-    { name = "tqdm", specifier = ">=4.0" },
+    { name = "scipy" },
+    { name = "torch", marker = "extra == 'baseline'", specifier = ">=2.0,<2.6" },
+    { name = "tqdm", marker = "extra == 'preprocess'", specifier = ">=4.0" },
 ]
-provides-extras = ["model", "dev"]
+provides-extras = ["preprocess", "baseline", "dev"]
 
 [[package]]
 name = "notebook"

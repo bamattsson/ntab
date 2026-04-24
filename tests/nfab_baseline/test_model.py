@@ -6,7 +6,7 @@ import torch
 
 from nfab_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
 from nfab_baseline.model import AffinityModel
-from nfab_baseline.model_utils import pearson_r_per_assay
+from nfab_evaluate.metrics import pearson_r_per_assay
 
 
 # ---------------------------------------------------------------------------

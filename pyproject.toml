@@ -11,21 +11,23 @@ dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
     "pyarrow>=14.0",
+    "scipy",
+    "matplotlib",
+    "notebook",
+]
+
+[project.optional-dependencies]
+preprocess = [
     "psycopg2-binary",
     "pyyaml",
     "rdkit>=2025.09.6",
     "tqdm>=4.0",
 ]
-
-[project.optional-dependencies]
-model = [
+baseline = [
     "torch>=2.0,<2.6",
     "lightning>=2.0",
     "jsonargparse[signatures]>=4.27.7",
     "biopython>=1.80",
-    "scipy",
-    "matplotlib",
-    "notebook",
 ]
 dev = [
     "pytest",
@@ -35,7 +37,8 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = [
-    "src/nfab",
+    "src/nfab_evaluate",
+    "src/nfab_preprocess",
     "src/nfab_baseline",
 ]
 

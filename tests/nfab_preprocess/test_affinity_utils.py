@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nfab.affinity_utils import (
+from nfab_preprocess.affinity_utils import (
     add_pchembl_columns,
     compute_pchembl_filled,
     invert_relation,

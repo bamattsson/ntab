@@ -642,14 +642,14 @@ class TestPrintMetrics:
 
         _print_metrics(self._make_df(), n_bootstrap=50)
         out = capsys.readouterr().out
-        assert "±" in out
+        assert "[" in out
 
     def test_no_se_printed_when_n_bootstrap_is_none(self, capsys) -> None:
         from nfab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df(), n_bootstrap=None)
         out = capsys.readouterr().out
-        assert "±" not in out
+        assert "[" not in out
 
     def test_n_assays_printed(self, capsys) -> None:
         from nfab_baseline.predict_on_benchmark import _print_metrics
@@ -846,4 +846,4 @@ class TestEvaluateSplits:
             n_bootstrap=50,
         )
         out = capsys.readouterr().out
-        assert "±" in out
+        assert "[" in out

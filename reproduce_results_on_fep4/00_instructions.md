@@ -7,7 +7,7 @@ These steps reproduce the evaluation of the baseline model on the FEP+ 4 benchma
 **Step 0 – Install packages:**
 
 ```bash
-uv sync --extra model
+uv sync --extra baseline
 source .venv/bin/activate
 ```
 
