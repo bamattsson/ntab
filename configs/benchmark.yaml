@@ -9,17 +9,14 @@ out_dir: out
 
 pipeline:
   test_set_similarity_bins:
-  # either low and hi, which means the range [low, hi)
-  # or equal, which acts like =equal
-    - low: 0
-      hi: 0.35
-    - low: 0.35
-      hi: 0.5
-    - low: 0.5
-      hi: 0.7
-    - low: 0.7
-      hi: 1.0
-    - equal: 1.0
+  # Assay-level mean-max Tanimoto bins (low / medium / high).
+  # hi: 1.001 formats as "1.00" so the label is sim_0.66_1.00 and includes sim==1.0.
+    - low: 0.0
+      hi: 0.33
+    - low: 0.33
+      hi: 0.66
+    - low: 0.66
+      hi: 1.001
 
   # Year boundaries for the time split.
   year_val_start: 2022

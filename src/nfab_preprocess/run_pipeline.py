@@ -35,6 +35,24 @@ def _sim_matches_bin(sim: pd.Series, b: SimilarityBin) -> pd.Series:
     return (sim >= b.low) & (sim < b.hi)
 
 
+def _assay_mean_sim(
+    activities_subset: pd.DataFrame,
+    sim_per_cpd: pd.Series,
+) -> pd.Series:
+    """Return per-assay mean of per-compound max similarity.
+
+    Args:
+        activities_subset: Rows to consider; must have ligand_chembl_id and assay_chembl_id.
+        sim_per_cpd: Series mapping ligand_chembl_id → max similarity (from compounds_df).
+
+    Returns:
+        Series indexed by assay_chembl_id with the mean max similarity across all
+        compounds in that assay.
+    """
+    cpd_sim = activities_subset["ligand_chembl_id"].map(sim_per_cpd)
+    return cpd_sim.groupby(activities_subset["assay_chembl_id"]).mean()
+
+
 def assign_splits(
     activities_df: pd.DataFrame,
     compounds_df: pd.DataFrame,
@@ -44,6 +62,10 @@ def assign_splits(
     split_val_like_test: bool = True,
 ) -> pd.DataFrame:
     """Assign a split label to each activity row based on doc_year and similarity bin.
+
+    Binning is performed at the **assay level**: each assay is assigned to the bin
+    matching the mean of its compounds' max Tanimoto similarities to the reference set.
+    All compounds in an assay receive the same split label.
 
     Split logic:
     - doc_year < year_val_start                           → "train"
@@ -64,6 +86,7 @@ def assign_splits(
     Args:
         activities_df: Activity data with at least columns:
             - ligand_chembl_id
+            - assay_chembl_id
             - doc_year (numeric, nullable)
         compounds_df: DataFrame indexed by chembl_id with columns:
             - max_sim_pre_{year_test_start} (float)
@@ -86,22 +109,29 @@ def assign_splits(
     mask_val = (year >= year_val_start) & (year < year_test_start)
     if mask_val.any():
         if split_val_like_test:
-            sim_val = result["ligand_chembl_id"].map(
-                compounds_df[f"max_sim_pre_{year_val_start}"]
+            val_subset = result[mask_val]
+            assay_sim_val = _assay_mean_sim(
+                val_subset, compounds_df[f"max_sim_pre_{year_val_start}"]
             )
+            # Map assay-level mean sim back to individual activity rows
+            row_sim_val = val_subset["assay_chembl_id"].map(assay_sim_val)
             for b in test_bins:
-                bin_mask = mask_val & _sim_matches_bin(sim_val, b)
+                bin_mask = mask_val.copy()
+                bin_mask[mask_val] = _sim_matches_bin(row_sim_val, b).values
                 split[bin_mask] = f"val_{_bin_label(b)}"
         else:
             split[mask_val] = "val"
 
     mask_test = year >= year_test_start
     if mask_test.any():
-        sim_test = result["ligand_chembl_id"].map(
-            compounds_df[f"max_sim_pre_{year_test_start}"]
+        test_subset = result[mask_test]
+        assay_sim_test = _assay_mean_sim(
+            test_subset, compounds_df[f"max_sim_pre_{year_test_start}"]
         )
+        row_sim_test = test_subset["assay_chembl_id"].map(assay_sim_test)
         for b in test_bins:
-            bin_mask = mask_test & _sim_matches_bin(sim_test, b)
+            bin_mask = mask_test.copy()
+            bin_mask[mask_test] = _sim_matches_bin(row_sim_test, b).values
             split[bin_mask] = f"test_{_bin_label(b)}"
 
     split = split.where(split.notna(), other=None)

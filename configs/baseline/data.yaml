@@ -12,11 +12,9 @@ fp_type: count
 # Which val splits to include during training validation.
 # List the val_sim_* labels matching your benchmark.yaml bins.
 val_splits:
-  - val_sim_0.00_0.35
-  - val_sim_0.35_0.50
-  - val_sim_0.50_0.70
-  - val_sim_0.70_1.00
-  - val_sim_1.00
+  - val_sim_0.00_0.33
+  - val_sim_0.33_0.66
+  - val_sim_0.66_1.00
 
 # Number of parallel worker processes for fingerprint generation and OOV target alignment.
 # -1 uses all available CPUs.
