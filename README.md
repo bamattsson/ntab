@@ -1,7 +1,5 @@
 # Novelty-Tiered Affinity Benchmark (NTAB)
 
-![](docs/benchmark_methodology.png)
-
 **Paper**: [coming soon]() | **Dataset**: [coming soon]()
 
 A novelty-tiered, time-split benchmark for protein-ligand binding affinity prediction, built from ChEMBL binding data.
@@ -23,7 +21,7 @@ Download `activities.parquet` and `targets.parquet` from [coming soon](). The do
 
 ### 2. Train your model
 
-Use all rows where `split = train`.
+Use all rows where `split = train` for train, and where `split = val_*` for validation. See [docs/benchmark_guidelines.md](docs/benchmark_guidelines.md) for more details on how we suggest people use this benchmark.
 
 ### 3. Generate predictions
 
