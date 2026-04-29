@@ -3,7 +3,11 @@ import math
 import numpy as np
 import pytest
 
-from nfab_evaluate.metrics import aggregate_per_assay, mae_per_assay, pearson_r_per_assay
+from ntab_evaluate.metrics import (
+    aggregate_per_assay,
+    mae_per_assay,
+    pearson_r_per_assay,
+)
 
 
 def _make_data(n: int = 20, seed: int = 0) -> tuple[np.ndarray, np.ndarray, list[str]]:
@@ -55,7 +59,9 @@ def test_pearson_r_empty_when_none_qualify():
     preds = np.array([1.0, 2.0, 3.0])
     labels = np.array([1.0, 2.0, 3.0])
     assay_ids = ["A", "A", "A"]
-    ids, r_vals, sizes = pearson_r_per_assay(preds, labels, assay_ids, min_assay_size=10)
+    ids, r_vals, sizes = pearson_r_per_assay(
+        preds, labels, assay_ids, min_assay_size=10
+    )
     assert len(ids) == 0
     assert len(r_vals) == 0
     assert len(sizes) == 0
@@ -149,6 +155,8 @@ def test_aggregate_weighted_mean():
 def test_aggregate_bootstrap_ci_ordered():
     rng = np.random.default_rng(0)
     metric = rng.uniform(0, 1, size=20)
-    mean, ci_low, ci_high = aggregate_per_assay(metric, n_bootstrap=500, seed_bootstrap=42)
+    mean, ci_low, ci_high = aggregate_per_assay(
+        metric, n_bootstrap=500, seed_bootstrap=42
+    )
     assert ci_low is not None and ci_high is not None
     assert ci_low <= mean <= ci_high

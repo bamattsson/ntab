@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nfab_evaluate.plotting import (
+from ntab_evaluate.plotting import (
     _parse_split_label,
     compute_model_stats,
     load_predictions,

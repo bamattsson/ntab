@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from nfab_preprocess.assay_filter import filter_assay_types
+from ntab_preprocess.assay_filter import filter_assay_types
 
 
 # ---------------------------------------------------------------------------

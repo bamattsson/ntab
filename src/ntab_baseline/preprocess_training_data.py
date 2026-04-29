@@ -17,7 +17,7 @@ OOV targets (not seen in train) are auto-mapped to the most sequence-similar
 training target via BLOSUM62 alignment.
 
 Usage:
-    uv run python -m nfab_baseline.preprocess_training_data \\
+    uv run python -m ntab_baseline.preprocess_training_data \\
         --config configs/baseline/data.yaml
 """
 
@@ -29,8 +29,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from nfab_baseline.constants import STANDARD_TYPE_INDEX
-from nfab_baseline.preprocess_utils import (
+from ntab_baseline.constants import STANDARD_TYPE_INDEX
+from ntab_baseline.preprocess_utils import (
     FEATURE_NAMES as PROP_FEATURE_NAMES,
     average_duplicates,
     build_target_index,

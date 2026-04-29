@@ -1,6 +1,6 @@
 import numpy as np
 
-from nfab_baseline.preprocess_utils import compute_fingerprints
+from ntab_baseline.preprocess_utils import compute_fingerprints
 
 ASPIRIN_SMILES = "CC(=O)Oc1ccccc1C(=O)O"
 ETHANOL_SMILES = "CCO"

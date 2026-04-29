@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from nfab_preprocess.similarity import (
+from ntab_preprocess.similarity import (
     compute_ecfp4_fingerprints,
     compute_similarity_for_cutoff_year,
     filter_by_tanimoto,

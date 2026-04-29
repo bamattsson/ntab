@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "nfab"
+name = "ntab"
 version = "0.1.0"
 description = "Time-split, novelty-filtered benchmark for protein-ligand binding affinity prediction"
 requires-python = ">=3.10"
@@ -38,9 +38,9 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = [
-    "src/nfab_evaluate",
-    "src/nfab_preprocess",
-    "src/nfab_baseline",
+    "src/ntab_evaluate",
+    "src/ntab_preprocess",
+    "src/ntab_baseline",
 ]
 
 [tool.ruff.lint]

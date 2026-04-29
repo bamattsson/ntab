@@ -5,7 +5,7 @@ and writes a predictions CSV in the unified output format.
 
 Usage
 -----
-    python -m nfab_baseline.predict_on_csv \\
+    python -m ntab_baseline.predict_on_csv \\
         --checkpoint out_baseline/lightning_logs/version_0/checkpoints/best.ckpt \\
         --data-dir out_baseline/data_preprocessing \\
         --input-csv compounds.csv \\
@@ -17,14 +17,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from nfab_baseline.constants import STANDARD_TYPE_INDEX
-from nfab_baseline.predict_on_benchmark import (
+from ntab_baseline.constants import STANDARD_TYPE_INDEX
+from ntab_baseline.predict_on_benchmark import (
     _assemble_output_df,
     _print_metrics,
     run_inference,
 )
-from nfab_baseline.model import AffinityModel
-from nfab_baseline.preprocess_pred_data import preprocess_for_inference
+from ntab_baseline.model import AffinityModel
+from ntab_baseline.preprocess_pred_data import preprocess_for_inference
 
 
 def load_csv_as_standard_df(

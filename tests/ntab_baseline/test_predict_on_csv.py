@@ -1,4 +1,4 @@
-"""Tests for nfab_baseline.predict_on_csv."""
+"""Tests for ntab_baseline.predict_on_csv."""
 
 import json
 from pathlib import Path
@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from nfab_baseline.constants import FP_SIZE
-from nfab_baseline.model import AffinityModel
+from ntab_baseline.constants import FP_SIZE
+from ntab_baseline.model import AffinityModel
 
 
 # ---------------------------------------------------------------------------
@@ -19,7 +19,7 @@ _SMILES = ["c1ccccc1", "CC(=O)O", "CCO", "c1ccncc1", "CCCC"]
 
 
 def _make_preproc_dir(tmp_path: Path, n_targets: int = 5) -> Path:
-    from nfab_baseline.preprocess_utils import FEATURE_NAMES as PROP_FEATURE_NAMES
+    from ntab_baseline.preprocess_utils import FEATURE_NAMES as PROP_FEATURE_NAMES
 
     d = tmp_path / "preproc"
     d.mkdir(parents=True, exist_ok=True)
@@ -88,14 +88,14 @@ class TestLoadCsvAsStandardDf:
         ]
 
     def test_returns_dataframe(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv)
         assert isinstance(df, pd.DataFrame)
 
     def test_has_required_columns(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv)
@@ -110,21 +110,21 @@ class TestLoadCsvAsStandardDf:
             assert col in df.columns, f"Missing column: {col}"
 
     def test_default_standard_type_ic50(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv, default_standard_type="IC50")
         assert (df["standard_type"] == "IC50").all()
 
     def test_default_standard_type_ki(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv, default_standard_type="Ki")
         assert (df["standard_type"] == "Ki").all()
 
     def test_standard_type_column_in_csv_takes_precedence(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         rows = [
             {
@@ -145,21 +145,21 @@ class TestLoadCsvAsStandardDf:
         assert list(df["standard_type"]) == ["Ki", "Kd"]
 
     def test_assay_id_equals_uniprot_id(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv)
         assert (df["assay_id"] == df["uniprot_id"]).all()
 
     def test_split_is_predict(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv)
         assert (df["split"] == "predict").all()
 
     def test_accepts_canonical_smiles_column(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         rows = [
             {
@@ -174,14 +174,14 @@ class TestLoadCsvAsStandardDf:
         assert "canonical_smiles" not in df.columns
 
     def test_pchembl_value_absent_when_not_in_csv(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv)
         assert "pchembl_value" not in df.columns
 
     def test_pchembl_value_preserved_when_in_csv(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import load_csv_as_standard_df
+        from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         rows = [
             {
@@ -236,7 +236,7 @@ class TestPredictOnCsvIntegration:
         return data_dir, ckpt_path, csv_path
 
     def test_creates_output_csv(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -244,7 +244,7 @@ class TestPredictOnCsvIntegration:
         assert out_csv.exists()
 
     def test_output_has_unified_columns(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -254,7 +254,7 @@ class TestPredictOnCsvIntegration:
             assert col in df.columns, f"Missing column: {col}"
 
     def test_pred_pchembl_numeric_and_not_null(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -264,7 +264,7 @@ class TestPredictOnCsvIntegration:
         assert df["pred_pchembl"].notna().all()
 
     def test_split_column_is_predict(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -273,7 +273,7 @@ class TestPredictOnCsvIntegration:
         assert (df["split"] == "predict").all()
 
     def test_pchembl_value_is_nan_when_no_labels(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -282,7 +282,7 @@ class TestPredictOnCsvIntegration:
         assert df["pchembl_value"].isna().all()
 
     def test_assay_id_equals_uniprot_id(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -291,7 +291,7 @@ class TestPredictOnCsvIntegration:
         assert (df["assay_id"] == df["uniprot_id"]).all()
 
     def test_no_metrics_printed_when_no_labels(self, tmp_path: Path, capsys) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -300,7 +300,7 @@ class TestPredictOnCsvIntegration:
         assert "Pearson" not in out
 
     def test_standard_type_default_applied(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
@@ -309,7 +309,7 @@ class TestPredictOnCsvIntegration:
         assert (df["standard_type"] == "Ki").all()
 
     def test_output_row_count_matches_input(self, tmp_path: Path) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         data_dir, ckpt, csv = self._setup(tmp_path)
         n_input = len(pd.read_csv(csv))
@@ -321,7 +321,7 @@ class TestPredictOnCsvIntegration:
     def test_metrics_printed_when_pchembl_value_in_input(
         self, tmp_path: Path, capsys
     ) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         n_targets = 3
         data_dir = _make_preproc_dir(tmp_path, n_targets=n_targets)
@@ -345,7 +345,7 @@ class TestPredictOnCsvIntegration:
     def test_pchembl_value_preserved_in_output_when_in_input(
         self, tmp_path: Path
     ) -> None:
-        from nfab_baseline.predict_on_csv import predict_on_csv
+        from ntab_baseline.predict_on_csv import predict_on_csv
 
         n_targets = 3
         data_dir = _make_preproc_dir(tmp_path, n_targets=n_targets)

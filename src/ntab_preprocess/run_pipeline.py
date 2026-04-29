@@ -2,7 +2,7 @@
 Pipeline entry point for generating the timesplit affinity benchmark.
 
 Usage:
-    python src/nfab_preprocess/run_pipeline.py --config config.yaml
+    python src/ntab_preprocess/run_pipeline.py --config config.yaml
 """
 
 import argparse
@@ -11,11 +11,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from nfab_preprocess.affinity_utils import add_pchembl_columns
-from nfab_preprocess.assay_filter import filter_assay_types
-from nfab_preprocess.chembl_requester import ChEMBLRequester
-from nfab_preprocess.config import SimilarityBin, load_config
-from nfab_preprocess.similarity import (
+from ntab_preprocess.affinity_utils import add_pchembl_columns
+from ntab_preprocess.assay_filter import filter_assay_types
+from ntab_preprocess.chembl_requester import ChEMBLRequester
+from ntab_preprocess.config import SimilarityBin, load_config
+from ntab_preprocess.similarity import (
     compute_ecfp4_fingerprints,
     compute_similarity_for_cutoff_year,
 )

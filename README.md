@@ -1,10 +1,10 @@
-# Novelty-filtered Affinity Benchmark
+# Novelty-Tiered Affinity Benchmark (NTAB)
 
 ![](docs/benchmark_methodology.png)
 
 **Paper**: [coming soon]() | **Dataset**: [coming soon]()
 
-A novelty-filtered, time-split benchmark for protein-ligand binding affinity prediction, built from ChEMBL binding data.
+A novelty-tiered, time-split benchmark for protein-ligand binding affinity prediction, built from ChEMBL binding data.
 
 ## Overview
 
@@ -56,8 +56,8 @@ source .venv/bin/activate
 ### conda
 
 ```bash
-conda create -n nfab python=3.11
-conda activate nfab
+conda create -n ntab python=3.11
+conda activate ntab
 pip install -e .
 ```
 
@@ -137,11 +137,11 @@ A ligand-only MLP baseline is included as a probe for what performance is achiev
 
 ## Citation
 
-If you use NFAB in your research, please cite:
+If you use NTAB in your research, please cite:
 
 ```bibtex
-@article{mattsson2026critical,
-  title   = {Critical Assessment of Binding Affinity Benchmarks: Data Leakage and the Illusion of Generalization},
+@article{mattsson2026identifying,
+  title   = {Identifying and Addressing Systematic Data Leakage in Protein-Ligand Affinity Benchmarks},
   author  = {Mattsson, Bj{\"o}rn and Walters, W. Patrick},
   year = {2026},
   doi = {},

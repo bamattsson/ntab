@@ -1,4 +1,4 @@
-# Baseline model: `nfab_baseline`
+# Baseline model: `ntab_baseline`
 
 An MLP baseline for protein-ligand binding affinity prediction, trained on
 ChEMBL data using ECFP4 fingerprints and physicochemical descriptors.
@@ -42,7 +42,7 @@ Requires `activities.parquet`, and `targets.parquet`
 from the benchmark pipeline (see main README).
 
 ```bash
-python -m nfab_baseline.preprocess_training_data \
+python -m ntab_baseline.preprocess_training_data \
     --config configs/baseline/data.yaml
 ```
 
@@ -63,7 +63,7 @@ the most sequence-similar training target via BLOSUM62 global alignment.
 ### Step 2 — Train
 
 ```bash
-python -m nfab_baseline.train fit --config configs/baseline/train.yaml
+python -m ntab_baseline.train fit --config configs/baseline/train.yaml
 ```
 
 The best checkpoint (by `val_pearson_r`) is saved under
@@ -75,7 +75,7 @@ Run inference on one or more held-out splits from `activities.parquet` and
 write per-row predictions to a CSV:
 
 ```bash
-python -m nfab_baseline.predict_on_benchmark \
+python -m ntab_baseline.predict_on_benchmark \
     --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
     --data-dir out_baseline/data_preprocessing \
     --activities out/activities.parquet \
@@ -94,7 +94,7 @@ Provide a CSV with columns `ligand_name`, `uniprot_id`, `smiles` (and
 optionally `standard_type` and `pchembl_value`):
 
 ```bash
-python -m nfab_baseline.predict_on_csv \
+python -m ntab_baseline.predict_on_csv \
     --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
     --data-dir out_baseline/data_preprocessing \
     --input-csv compounds.csv \

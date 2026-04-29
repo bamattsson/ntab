@@ -1,7 +1,7 @@
 import pandas as pd
 
-from nfab_preprocess.config import SimilarityBin
-from nfab_preprocess.run_pipeline import assign_splits
+from ntab_preprocess.config import SimilarityBin
+from ntab_preprocess.run_pipeline import assign_splits
 
 
 YEAR_VAL = 2022

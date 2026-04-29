@@ -1,6 +1,6 @@
-# Reproducing the benchmark: `nfab_preprocess`
+# Reproducing the benchmark: `ntab_preprocess`
 
-Instructions for regenerating the NFAB dataset from a local ChEMBL database.
+Instructions for regenerating the NTAB dataset from a local ChEMBL database.
 
 ---
 
@@ -22,7 +22,7 @@ Add your ChEMBL database credentials to `configs/benchmark.yaml`.
 ## 2. Run the pipeline
 
 ```bash
-python -m nfab_preprocess.run_pipeline --config configs/benchmark.yaml
+python -m ntab_preprocess.run_pipeline --config configs/benchmark.yaml
 ```
 
 The pipeline runs in 8 steps and writes intermediate files to `out/intermediate/` and final outputs to `out/`. The full ChEMBL 36 run takes approximately 45 minutes on a machine with 16 cores and requires ~40 GB of RAM.

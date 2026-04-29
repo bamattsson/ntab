@@ -1,5 +1,5 @@
 # Preprocessing config for the affinity baseline — FEP benchmark data split.
-# Run: uv run python -m nfab_baseline.preprocess_training_data --config reproduce_results_on_fep4/02_model_data.yaml
+# Run: uv run python -m ntab_baseline.preprocess_training_data --config reproduce_results_on_fep4/02_model_data.yaml
 
 paths:
   activities_parquet: ../timesplit-affinity-benchmark/out_FEP4/activities.parquet

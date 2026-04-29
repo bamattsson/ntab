@@ -1,12 +1,10 @@
-import math
-
 import numpy as np
 import pytest
 import torch
 
-from nfab_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
-from nfab_baseline.model import AffinityModel
-from nfab_evaluate.metrics import aggregate_per_assay, pearson_r_per_assay
+from ntab_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
+from ntab_baseline.model import AffinityModel
+from ntab_evaluate.metrics import aggregate_per_assay, pearson_r_per_assay
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +104,9 @@ class TestPearsonRPerAssay:
         preds = np.arange(9, dtype=np.float32)
         labels = np.arange(9, dtype=np.float32)
         assay_ids = ["A"] * 9
-        ids, r_vals, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
+        ids, r_vals, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids
+        )
         assert len(ids) == 0
 
     def test_size_weighted_differs_from_macro_for_unequal_assays(self) -> None:

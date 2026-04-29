@@ -11,8 +11,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from nfab_baseline.constants import MOL_PROP_FEATURES, STANDARD_TYPE_INDEX
-from nfab_baseline.preprocess_utils import (
+from ntab_baseline.constants import MOL_PROP_FEATURES, STANDARD_TYPE_INDEX
+from ntab_baseline.preprocess_utils import (
     FEATURE_NAMES as PROP_FEATURE_NAMES,
     compute_fingerprints,
     compute_mol_properties,

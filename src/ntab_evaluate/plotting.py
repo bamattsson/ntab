@@ -5,7 +5,11 @@ import warnings
 
 import pandas as pd
 
-from nfab_evaluate.metrics import aggregate_per_assay, mae_per_assay, pearson_r_per_assay
+from ntab_evaluate.metrics import (
+    aggregate_per_assay,
+    mae_per_assay,
+    pearson_r_per_assay,
+)
 
 
 def _parse_split_label(split: str) -> tuple[float, float, str]:
@@ -107,7 +111,9 @@ def compute_model_stats(
         preds = subset["pred_pchembl"].values
         labels = subset["pchembl_value_filled"].values
 
-        ids_r, r_vals, sizes_r = pearson_r_per_assay(preds, labels, assay_keys, min_assay_size)
+        ids_r, r_vals, sizes_r = pearson_r_per_assay(
+            preds, labels, assay_keys, min_assay_size
+        )
         ids_mae, mae_vals, _ = mae_per_assay(preds, labels, assay_keys, min_assay_size)
 
         r_by_id = dict(zip(ids_r, r_vals))
@@ -142,7 +148,9 @@ def compute_model_stats(
                 "n_a": n_a,
                 "pearson_r": r,
                 "pearson_r_ci_low": r_ci_low if r_ci_low is not None else float("nan"),
-                "pearson_r_ci_high": r_ci_high if r_ci_high is not None else float("nan"),
+                "pearson_r_ci_high": r_ci_high
+                if r_ci_high is not None
+                else float("nan"),
                 "mae": mae,
                 "mae_ci_low": mae_ci_low if mae_ci_low is not None else float("nan"),
                 "mae_ci_high": mae_ci_high if mae_ci_high is not None else float("nan"),

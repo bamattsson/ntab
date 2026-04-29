@@ -1,5 +1,5 @@
 """
-nfab_evaluate
+ntab_evaluate
 
 Lightweight evaluation utilities for the NFAB benchmark:
 - pearson_r_per_assay: per-assay Pearson r metric
