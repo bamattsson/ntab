@@ -7,7 +7,7 @@ import torch.nn as nn
 import lightning as L
 
 from nfab_baseline.constants import FP_SIZE, MIN_ASSAY_SIZE, N_MOL_PROP_FEATURES
-from nfab_evaluate.metrics import pearson_r_per_assay
+from nfab_evaluate.metrics import aggregate_per_assay, pearson_r_per_assay
 
 
 class AffinityModel(L.LightningModule):
@@ -132,12 +132,13 @@ class AffinityModel(L.LightningModule):
     def on_validation_epoch_end(self) -> None:
         if not self._val_preds:
             return
-        r, _, _ = pearson_r_per_assay(
+        _, r_vals, _ = pearson_r_per_assay(
             torch.cat(self._val_preds).numpy(),
             torch.cat(self._val_labels).numpy(),
             self._val_assay_ids,
             self.min_assay_size,
         )
+        r, _, _ = aggregate_per_assay(r_vals)
         if not math.isnan(r):
             self.log("val_pearson_r", r, prog_bar=True)
         self._val_preds.clear()
@@ -154,12 +155,13 @@ class AffinityModel(L.LightningModule):
     def on_test_epoch_end(self) -> None:
         if not self._test_preds:
             return
-        r, _, _ = pearson_r_per_assay(
+        _, r_vals, _ = pearson_r_per_assay(
             torch.cat(self._test_preds).numpy(),
             torch.cat(self._test_labels).numpy(),
             self._test_assay_ids,
             self.min_assay_size,
         )
+        r, _, _ = aggregate_per_assay(r_vals)
         if not math.isnan(r):
             self.log("test_pearson_r", r)
         self._test_preds.clear()

@@ -6,7 +6,7 @@ import torch
 
 from nfab_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
 from nfab_baseline.model import AffinityModel
-from nfab_evaluate.metrics import pearson_r_per_assay
+from nfab_evaluate.metrics import aggregate_per_assay, pearson_r_per_assay
 
 
 # ---------------------------------------------------------------------------
@@ -54,66 +54,64 @@ def _make_batch(
 
 class TestPearsonRPerAssay:
     def test_perfect_correlation_returns_one(self) -> None:
-        # Predictions == labels → Pearson r = 1.0
         vals = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r, _, _ = pearson_r_per_assay(
+        ids, r_vals, _ = pearson_r_per_assay(
             preds=vals, labels=vals, assay_ids=assay_ids, min_assay_size=3
         )
-        assert pytest.approx(r, abs=1e-5) == 1.0
+        assert pytest.approx(r_vals[0], abs=1e-5) == 1.0
 
     def test_perfect_anticorrelation_returns_minus_one(self) -> None:
         preds = np.array([8.0, 7.0, 6.0, 5.0, 4.0])
         labels = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
         assay_ids = ["A"] * 5
-        r, _, _ = pearson_r_per_assay(
+        ids, r_vals, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
-        assert pytest.approx(r, abs=1e-5) == -1.0
+        assert pytest.approx(r_vals[0], abs=1e-5) == -1.0
 
     def test_averages_across_assays(self) -> None:
-        # Assay A: perfect correlation (r=1), Assay B: perfect anticorrelation (r=-1)
-        # Mean should be 0
+        # Assay A: r=1, Assay B: r=-1 → macro mean = 0
         preds = np.array([1.0, 2.0, 3.0, 3.0, 2.0, 1.0])
         labels = np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
         assay_ids = ["A", "A", "A", "B", "B", "B"]
-        r, _, _ = pearson_r_per_assay(
+        _, r_vals, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
-        assert pytest.approx(r, abs=1e-5) == 0.0
+        mean, _, _ = aggregate_per_assay(r_vals)
+        assert pytest.approx(mean, abs=1e-5) == 0.0
 
     def test_assays_below_min_size_are_skipped(self) -> None:
-        # Assay A has 5 samples (qualifies), Assay B has 2 (skipped)
-        # Only Assay A contributes, which has perfect correlation
+        # Assay A: 5 samples (qualifies), Assay B: 2 samples (excluded)
         preds = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 9.0, 1.0])
         labels = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 9.0])
         assay_ids = ["A", "A", "A", "A", "A", "B", "B"]
-        r, _, _ = pearson_r_per_assay(
+        ids, r_vals, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
-        assert pytest.approx(r, abs=1e-5) == 1.0
+        assert list(ids) == ["A"]
+        assert pytest.approx(r_vals[0], abs=1e-5) == 1.0
 
-    def test_all_assays_below_min_size_returns_nan(self) -> None:
+    def test_all_assays_below_min_size_returns_empty(self) -> None:
         preds = np.array([1.0, 2.0])
         labels = np.array([1.0, 2.0])
         assay_ids = ["A", "A"]
-        r, _, _ = pearson_r_per_assay(
+        ids, r_vals, sizes = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
-        assert math.isnan(r)
+        assert len(ids) == 0
 
     def test_default_min_assay_size_is_10(self) -> None:
-        # 9 samples in one assay → should be skipped → NaN
+        # 9 samples → filtered out → empty result
         preds = np.arange(9, dtype=np.float32)
         labels = np.arange(9, dtype=np.float32)
         assay_ids = ["A"] * 9
-        r, _, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
-        assert math.isnan(r)
+        ids, r_vals, _ = pearson_r_per_assay(preds=preds, labels=labels, assay_ids=assay_ids)
+        assert len(ids) == 0
 
     def test_size_weighted_differs_from_macro_for_unequal_assays(self) -> None:
-        # Assay A (3 samples, r≈1) and Assay B (9 samples, r≈-1).
-        # Macro avg = (1 + -1) / 2 = 0.
-        # Size-weighted avg = (3*1 + 9*(-1)) / 12 = -0.5.
+        # Assay A (3 samples, r≈1), Assay B (9 samples, r≈-1)
+        # Macro: (1 + -1) / 2 = 0; size-weighted: (3·1 + 9·-1) / 12 = -0.5
         preds_a = np.array([1.0, 2.0, 3.0])
         labels_a = np.array([1.0, 2.0, 3.0])
         preds_b = np.array([9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
@@ -121,12 +119,11 @@ class TestPearsonRPerAssay:
         preds = np.concatenate([preds_a, preds_b])
         labels = np.concatenate([labels_a, labels_b])
         assay_ids = ["A"] * 3 + ["B"] * 9
-        r_macro, _, _ = pearson_r_per_assay(
-            preds, labels, assay_ids, min_assay_size=3, weighted=False
+        _, r_vals, sizes = pearson_r_per_assay(
+            preds, labels, assay_ids, min_assay_size=3
         )
-        r_weighted, _, _ = pearson_r_per_assay(
-            preds, labels, assay_ids, min_assay_size=3, weighted=True
-        )
+        r_macro, _, _ = aggregate_per_assay(r_vals)
+        r_weighted, _, _ = aggregate_per_assay(r_vals, assay_size=sizes, weighted=True)
         assert pytest.approx(r_macro, abs=1e-5) == 0.0
         assert pytest.approx(r_weighted, abs=1e-5) == -0.5
 

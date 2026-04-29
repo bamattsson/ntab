@@ -2,11 +2,10 @@
 
 import pathlib
 import warnings
-from collections import Counter
 
 import pandas as pd
 
-from nfab_evaluate.metrics import mae_per_assay, pearson_r_per_assay
+from nfab_evaluate.metrics import aggregate_per_assay, mae_per_assay, pearson_r_per_assay
 
 
 def _parse_split_label(split: str) -> tuple[float, float, str]:
@@ -73,7 +72,7 @@ def compute_model_stats(
     bins: list[tuple[float, float, str]],
     min_assay_size: int = 10,
     n_bootstrap: int = 1000,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Compute per-bin Pearson r and MAE for a single model.
 
     Args:
@@ -84,12 +83,17 @@ def compute_model_stats(
         n_bootstrap: Number of bootstrap resamples for the 95% CI.
 
     Returns:
-        DataFrame with columns:
-            display_label, n_m (molecules), n_a (qualifying assays),
-            pearson_r, pearson_r_ci_low, pearson_r_ci_high,
-            mae, mae_ci_low, mae_ci_high.
+        Tuple of (per_assay, aggregated).
+
+        per_assay: One row per qualifying (assay, bin) pair. Columns:
+            assay_id, bin_label, display_label, pearson_r, mae, n.
+        aggregated: One row per similarity bin. Columns:
+            display_label, n_m, n_a, pearson_r, pearson_r_ci_low,
+            pearson_r_ci_high, mae, mae_ci_low, mae_ci_high.
     """
-    records = []
+    per_assay_records = []
+    agg_records = []
+
     for lo, hi, display_label in bins:
         split_label = (
             f"test_sim_{lo:.2f}" if lo == hi else f"test_sim_{lo:.2f}_{hi:.2f}"
@@ -103,36 +107,46 @@ def compute_model_stats(
         preds = subset["pred_pchembl"].values
         labels = subset["pchembl_value_filled"].values
 
-        r, r_ci_low, r_ci_high = pearson_r_per_assay(
-            preds=preds,
-            labels=labels,
-            assay_ids=assay_keys,
-            min_assay_size=min_assay_size,
-            n_bootstrap=n_bootstrap,
-            seed_bootstrap=42,
+        ids_r, r_vals, sizes_r = pearson_r_per_assay(preds, labels, assay_keys, min_assay_size)
+        ids_mae, mae_vals, _ = mae_per_assay(preds, labels, assay_keys, min_assay_size)
+
+        r_by_id = dict(zip(ids_r, r_vals))
+        mae_by_id = dict(zip(ids_mae, mae_vals))
+        size_by_id = dict(zip(ids_r, sizes_r))
+
+        all_ids = sorted(set(ids_r) | set(ids_mae))
+        for aid in all_ids:
+            per_assay_records.append(
+                {
+                    "assay_id": aid,
+                    "bin_label": split_label,
+                    "display_label": display_label,
+                    "pearson_r": r_by_id.get(aid, float("nan")),
+                    "mae": mae_by_id.get(aid, float("nan")),
+                    "n": size_by_id.get(aid, 0),
+                }
+            )
+
+        r, r_ci_low, r_ci_high = aggregate_per_assay(
+            r_vals, n_bootstrap=n_bootstrap, seed_bootstrap=42
         )
-        mae, mae_ci_low, mae_ci_high = mae_per_assay(
-            preds=preds,
-            labels=labels,
-            assay_ids=assay_keys,
-            min_assay_size=min_assay_size,
-            n_bootstrap=n_bootstrap,
-            seed_bootstrap=42,
+        mae, mae_ci_low, mae_ci_high = aggregate_per_assay(
+            mae_vals, n_bootstrap=n_bootstrap, seed_bootstrap=42
         )
 
-        counts = Counter(assay_keys)
-        n_a = sum(1 for c in counts.values() if c >= min_assay_size)
-        records.append(
-            dict(
-                display_label=display_label,
-                n_m=len(subset),
-                n_a=n_a,
-                pearson_r=r,
-                pearson_r_ci_low=r_ci_low if r_ci_low is not None else float("nan"),
-                pearson_r_ci_high=r_ci_high if r_ci_high is not None else float("nan"),
-                mae=mae,
-                mae_ci_low=mae_ci_low if mae_ci_low is not None else float("nan"),
-                mae_ci_high=mae_ci_high if mae_ci_high is not None else float("nan"),
-            )
+        n_a = len(ids_r)  # pearson_r_per_assay already applies min_assay_size
+        agg_records.append(
+            {
+                "display_label": display_label,
+                "n_m": len(subset),
+                "n_a": n_a,
+                "pearson_r": r,
+                "pearson_r_ci_low": r_ci_low if r_ci_low is not None else float("nan"),
+                "pearson_r_ci_high": r_ci_high if r_ci_high is not None else float("nan"),
+                "mae": mae,
+                "mae_ci_low": mae_ci_low if mae_ci_low is not None else float("nan"),
+                "mae_ci_high": mae_ci_high if mae_ci_high is not None else float("nan"),
+            }
         )
-    return pd.DataFrame(records)
+
+    return pd.DataFrame(per_assay_records), pd.DataFrame(agg_records)

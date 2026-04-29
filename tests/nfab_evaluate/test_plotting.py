@@ -112,11 +112,18 @@ def _make_merged(
     return pd.DataFrame(rows), bins
 
 
-def test_compute_model_stats_shape():
+def test_compute_model_stats_returns_two_dataframes():
     merged, bins = _make_merged()
-    stats = compute_model_stats(merged, bins, min_assay_size=5, n_bootstrap=50)
-    assert len(stats) == len(bins)
-    assert set(stats.columns) == {
+    result = compute_model_stats(merged, bins, min_assay_size=5, n_bootstrap=50)
+    assert isinstance(result, tuple) and len(result) == 2
+    assert all(isinstance(df, pd.DataFrame) for df in result)
+
+
+def test_compute_model_stats_aggregated_shape():
+    merged, bins = _make_merged()
+    _, aggregated = compute_model_stats(merged, bins, min_assay_size=5, n_bootstrap=50)
+    assert len(aggregated) == len(bins)
+    assert set(aggregated.columns) == {
         "display_label",
         "n_m",
         "n_a",
@@ -129,7 +136,23 @@ def test_compute_model_stats_shape():
     }
 
 
-def test_compute_model_stats_n_m():
+def test_compute_model_stats_aggregated_n_m():
     merged, bins = _make_merged(n_per_bin=20)
-    stats = compute_model_stats(merged, bins, min_assay_size=5, n_bootstrap=50)
-    assert (stats["n_m"] == 20).all()
+    _, aggregated = compute_model_stats(merged, bins, min_assay_size=5, n_bootstrap=50)
+    assert (aggregated["n_m"] == 20).all()
+
+
+def test_compute_model_stats_per_assay_columns():
+    merged, bins = _make_merged()
+    per_assay, _ = compute_model_stats(merged, bins, min_assay_size=5, n_bootstrap=50)
+    assert {"assay_id", "bin_label", "display_label", "pearson_r", "mae", "n"}.issubset(
+        per_assay.columns
+    )
+
+
+def test_compute_model_stats_per_assay_bin_labels():
+    merged, bins = _make_merged()
+    per_assay, _ = compute_model_stats(merged, bins, min_assay_size=5, n_bootstrap=50)
+    assert set(per_assay["bin_label"].unique()) == {
+        f"test_sim_{lo:.2f}_{hi:.2f}" for lo, hi, _ in bins
+    }

@@ -13,32 +13,26 @@ def mae_per_assay(
     labels: np.ndarray,
     assay_ids: list[str],
     min_assay_size: int = MIN_ASSAY_SIZE,
-    n_bootstrap: None | int = None,
-    seed_bootstrap: None | int = None,
-) -> tuple[float, float | None, float | None]:
-    """Compute macro-average MAE across assays (mean_assays(mean_activities(|error|))).
-
-    Each qualifying assay contributes equally regardless of size. Assays with
-    fewer than min_assay_size samples are excluded.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Compute MAE for each qualifying assay.
 
     Args:
         preds: Predicted values, shape (N,).
         labels: True values, shape (N,).
         assay_ids: Assay identifier per sample, length N.
         min_assay_size: Assays with fewer than this many samples are excluded.
-        n_bootstrap: If set, compute a 95% bootstrap confidence interval using
-            this many resamples (resampling at the assay level).
 
     Returns:
-        Tuple of (mae, ci_low, ci_high) where mae is the macro-average MAE across
-        qualifying assays (NaN if none qualify), and ci_low/ci_high are the 2.5th
-        and 97.5th bootstrap percentiles, or None if n_bootstrap was not provided.
+        Tuple of (assay_ids, mae, assay_sizes) as numpy arrays, one entry per
+        qualifying assay. assay_ids has dtype object, mae float64, assay_sizes int64.
     """
     assay_to_indices: dict[str, list[int]] = {}
     for i, assay in enumerate(assay_ids):
         assay_to_indices.setdefault(assay, []).append(i)
 
-    maes: list[float] = []
+    out_ids: list[str] = []
+    out_mae: list[float] = []
+    out_sizes: list[int] = []
     for assay, indices in sorted(assay_to_indices.items()):
         if len(indices) < min_assay_size:
             continue
@@ -46,24 +40,15 @@ def mae_per_assay(
         assay_mae = float(np.mean(np.abs(preds[idx] - labels[idx])))
         if not math.isfinite(assay_mae):
             continue
-        maes.append(assay_mae)
+        out_ids.append(assay)
+        out_mae.append(assay_mae)
+        out_sizes.append(len(indices))
 
-    if not maes:
-        return float("nan"), None, None
-
-    maes_a = np.array(maes)
-    mae = float(maes_a.mean())
-
-    if n_bootstrap is None:
-        return mae, None, None
-
-    # Bootstrap a 95% CI by resampling assays
-    rng = np.random.default_rng(seed=seed_bootstrap)
-    num_assays = len(maes_a)
-    boot_idx = rng.integers(0, num_assays, size=(n_bootstrap, num_assays))
-    boot_means = maes_a[boot_idx].mean(axis=1)
-    ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
-    return mae, float(ci_low), float(ci_high)
+    return (
+        np.array(out_ids, dtype=object),
+        np.array(out_mae, dtype=np.float64),
+        np.array(out_sizes, dtype=np.int64),
+    )
 
 
 def pearson_r_per_assay(
@@ -71,68 +56,95 @@ def pearson_r_per_assay(
     labels: np.ndarray,
     assay_ids: list[str],
     min_assay_size: int = MIN_ASSAY_SIZE,
-    n_bootstrap: None | int = None,
-    seed_bootstrap: None | int = None,
-    weighted: bool = False,
-) -> tuple[float, float | None, float | None]:
-    """Compute mean Pearson r across assays, skipping assays below min_assay_size.
-
-    By default computes the macro-average (each qualifying assay contributes
-    equally regardless of size). Pass weighted=True for size-weighted averaging.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Compute Pearson r for each qualifying assay.
 
     Args:
         preds: Predicted values, shape (N,).
         labels: True values, shape (N,).
         assay_ids: Assay identifier per sample, length N.
         min_assay_size: Assays with fewer than this many samples are excluded.
-        n_bootstrap: If set, compute a 95% bootstrap confidence interval using
-            this many resamples (resampling at the assay level).
-        weighted: If False (default), compute macro-average (equal weight per
-            assay). If True, weight each assay's Pearson r by its sample count.
 
     Returns:
-        Tuple of (pearson_r, ci_low, ci_high) where pearson_r is the mean Pearson r
-        across qualifying assays (NaN if none qualify), and ci_low/ci_high are the
-        2.5th and 97.5th bootstrap percentiles, or None if n_bootstrap was not provided.
+        Tuple of (assay_ids, pearson_r, assay_sizes) as numpy arrays, one entry
+        per qualifying assay. assay_ids has dtype object, pearson_r float64,
+        assay_sizes int64. Non-finite r values are excluded.
     """
     assay_to_indices: dict[str, list[int]] = {}
     for i, assay in enumerate(assay_ids):
         assay_to_indices.setdefault(assay, []).append(i)
 
-    rs: list[float] = []
-    weights: list[int] = []
+    out_ids: list[str] = []
+    out_r: list[float] = []
+    out_sizes: list[int] = []
     for assay, indices in sorted(assay_to_indices.items()):
         if len(indices) < min_assay_size:
             continue
         idx = np.array(indices)
         r, _ = pearsonr(preds[idx], labels[idx])
+        # Non-finite r (e.g. constant predictions) → 0.0 to penalise the assay.
         if not math.isfinite(r):
-            continue
-        rs.append(r)
-        weights.append(len(indices))
+            r = 0.0
+        out_ids.append(assay)
+        out_r.append(float(r))
+        out_sizes.append(len(indices))
 
-    if not rs:
+    return (
+        np.array(out_ids, dtype=object),
+        np.array(out_r, dtype=np.float64),
+        np.array(out_sizes, dtype=np.int64),
+    )
+
+
+def aggregate_per_assay(
+    metric: np.ndarray,
+    assay_size: np.ndarray | None = None,
+    n_bootstrap: int | None = None,
+    seed_bootstrap: int | None = None,
+    weighted: bool = False,
+) -> tuple[float, float | None, float | None]:
+    """Aggregate per-assay metric values to a mean with optional bootstrap CI.
+
+    Args:
+        metric: Per-assay metric values (already filtered by min_assay_size),
+            shape (n_assays,).
+        assay_size: Sample count per assay, shape (n_assays,). Required when
+            weighted=True.
+        n_bootstrap: If set, compute a 95% CI using this many bootstrap resamples
+            (resampling at the assay level).
+        seed_bootstrap: Random seed for reproducible bootstrap.
+        weighted: If True, weight each assay by its sample count. Requires
+            assay_size to be provided.
+
+    Returns:
+        Tuple of (mean, ci_low, ci_high). mean is NaN if metric is empty.
+        ci_low/ci_high are None when n_bootstrap is not provided.
+    """
+    if weighted and assay_size is None:
+        raise ValueError("assay_size is required when weighted=True")
+
+    if len(metric) == 0:
         return float("nan"), None, None
 
-    rs_a = np.array(rs)
-    w_a = np.array(weights, dtype=np.float64)
     if weighted:
-        pearson_r = float((rs_a * w_a).sum() / w_a.sum())
+        w = assay_size.astype(np.float64)
+        mean = float((metric * w).sum() / w.sum())
     else:
-        pearson_r = float(rs_a.mean())
+        mean = float(metric.mean())
 
     if n_bootstrap is None:
-        return pearson_r, None, None
+        return mean, None, None
 
-    # Bootstrap a 95% CI by resampling assays
     rng = np.random.default_rng(seed=seed_bootstrap)
-    num_assays = len(rs_a)
-    boot_idx = rng.integers(0, num_assays, size=(n_bootstrap, num_assays))
-    boot_rs = rs_a[boot_idx]  # (n_bootstrap, num_assays)
+    n = len(metric)
+    boot_idx = rng.integers(0, n, size=(n_bootstrap, n))
+    boot_vals = metric[boot_idx]
     if weighted:
-        boot_ws = w_a[boot_idx]  # (n_bootstrap, num_assays)
-        boot_means = (boot_rs * boot_ws).sum(axis=1) / boot_ws.sum(axis=1)
+        w = assay_size.astype(np.float64)
+        boot_ws = w[boot_idx]
+        boot_means = (boot_vals * boot_ws).sum(axis=1) / boot_ws.sum(axis=1)
     else:
-        boot_means = boot_rs.mean(axis=1)
+        boot_means = boot_vals.mean(axis=1)
+
     ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
-    return pearson_r, float(ci_low), float(ci_high)
+    return mean, float(ci_low), float(ci_high)
