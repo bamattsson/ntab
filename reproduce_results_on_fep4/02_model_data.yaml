@@ -7,7 +7,7 @@ paths:
   output_dir: out_FEP4_baseline/data_preprocessing
 fp_type: count
 # This should contain the FEP+ 4 data split as uniprot_id -> train/val/test
-split_from_file: ../paper-critical_assessment_of_binding_affinity_benchmarks/data/out/FEP_data_split.csv
+split_from_file: ../paper-identifying_and_addressing_data_leakage/data/out/FEP_data_split.csv
 val_splits:
   - val  # Needs to be val for this dataset
 n_jobs: 8
