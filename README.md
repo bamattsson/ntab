@@ -36,13 +36,10 @@ Generate a prediction for every row where `split` starts with `test_`. Save thes
 
 Rows not present in the CSV are filled with `pred_pchembl = 6.0` (1 µM) when computing metrics.
 
-### 4. Analyse results
 
-Open `calculate_benchmark_performance.ipynb`, set `ACTIVITIES_PATH` and `MODELS`, and run all cells. The notebook computes mean Pearson r per similarity bin with bootstrap confidence intervals and produces a summary plot.
+### 4. Install dependencies for analysis
 
-## Installation
-
-### uv (recommended)
+#### uv (recommended)
 
 [uv](https://github.com/astral-sh/uv) is recommended. Requires Python 3.10+.
 
@@ -51,13 +48,17 @@ uv sync
 source .venv/bin/activate
 ```
 
-### conda
+#### conda
 
 ```bash
 conda create -n ntab python=3.11
 conda activate ntab
 pip install -e .
 ```
+
+### 5. Analyse results
+
+Open `calculate_benchmark_performance.ipynb`, set `ACTIVITIES_PATH` and `MODELS`, and run all cells. The notebook computes mean Pearson r per similarity bin with bootstrap confidence intervals and produces a summary plot.
 
 ## Dataset
 
