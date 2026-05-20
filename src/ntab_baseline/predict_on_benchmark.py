@@ -167,7 +167,8 @@ def run_inference(
                 batch_end = row_offset + fps_b.shape[0]
                 batch_smiles = smiles[row_offset:batch_end]
                 mol_graphs = [mol_graph_cache(s) for s in batch_smiles]
-                bmg = BatchMolGraph(mol_graphs).to(device)
+                bmg = BatchMolGraph(mol_graphs)
+                bmg.to(device)
                 row_offset = batch_end
 
             preds = model(
