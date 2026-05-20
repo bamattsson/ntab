@@ -34,7 +34,11 @@ class AffinityModel(L.LightningModule):
         use_chemprop: Whether to include Chemprop D-MPNN molecular encoding.
         chemprop_d_h: Hidden dimension for Chemprop message passing.
         chemprop_depth: Number of message passing iterations.
-        lr: Learning rate.
+        lr: Learning rate (used as max_lr for NoamLR when warmup_epochs > 0).
+        init_lr: Initial learning rate for NoamLR warmup.
+        max_lr: Peak learning rate for NoamLR (defaults to lr).
+        final_lr: Final learning rate for NoamLR cooldown.
+        warmup_epochs: Number of warmup epochs for NoamLR scheduler.
     """
 
     def __init__(
@@ -50,11 +54,19 @@ class AffinityModel(L.LightningModule):
         chemprop_d_h: int = 300,
         chemprop_depth: int = 3,
         lr: float = 1e-3,
+        init_lr: float = 1e-4,
+        max_lr: float | None = None,
+        final_lr: float = 1e-4,
+        warmup_epochs: int = 2,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
         self.min_assay_size = min_assay_size
         self.lr = lr
+        self.init_lr = init_lr
+        self.max_lr = max_lr if max_lr is not None else lr
+        self.final_lr = final_lr
+        self.warmup_epochs = warmup_epochs
         self.use_fps = use_fps
         self.use_mol_props = use_mol_props
         self.use_chemprop = use_chemprop
@@ -197,18 +209,20 @@ class AffinityModel(L.LightningModule):
         self._test_assay_ids.clear()
 
     def configure_optimizers(self):
-        decay, no_decay = [], []
-        for name, param in self.named_parameters():
-            if "bias" in name or "bn" in name or "assay_type_bias" in name:
-                no_decay.append(param)
-            else:
-                decay.append(param)
-        optimizer = torch.optim.AdamW(
-            [
-                {"params": decay, "weight_decay": 1e-5},
-                {"params": no_decay, "weight_decay": 0.0},
-            ],
-            lr=self.lr,
+        from chemprop.schedulers import build_NoamLike_LRSched
+
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.init_lr)
+
+        steps_per_epoch = self.trainer.estimated_stepping_batches // self.trainer.max_epochs
+        warmup_steps = self.warmup_epochs * steps_per_epoch
+        cooldown_steps = (self.trainer.max_epochs - self.warmup_epochs) * steps_per_epoch
+
+        scheduler = build_NoamLike_LRSched(
+            optimizer,
+            warmup_steps=warmup_steps,
+            cooldown_steps=cooldown_steps,
+            init_lr=self.init_lr,
+            max_lr=self.max_lr,
+            final_lr=self.final_lr,
         )
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50)
-        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
