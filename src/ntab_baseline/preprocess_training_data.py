@@ -192,6 +192,28 @@ def main() -> None:
     )
     print(f"  Saved {prop_npz_path}")
 
+    # ------------------------------------------------------------------
+    # Precompute Chemprop MolGraphs for all compounds
+    # ------------------------------------------------------------------
+    print("\nPrecomputing Chemprop MolGraphs...")
+    from ntab_baseline.chemprop_utils import precompute_molgraphs
+
+    chembl_to_smiles = dict(
+        zip(compounds_df["chembl_id"], compounds_df["canonical_smiles"])
+    )
+    compound_smiles = [chembl_to_smiles[name] for name in fp_names]
+    mol_graphs = precompute_molgraphs(compound_smiles)
+    n_failed = sum(1 for mg in mol_graphs if mg is None)
+    if n_failed:
+        print(f"  WARNING: {n_failed} compounds failed MolGraph featurization")
+
+    mg_path = out_dir / "molgraphs.pkl"
+    import pickle
+
+    with open(mg_path, "wb") as f:
+        pickle.dump(mol_graphs, f, protocol=pickle.HIGHEST_PROTOCOL)
+    print(f"  Saved {mg_path} ({len(mol_graphs)} MolGraphs)")
+
     fp_name_to_idx: dict[str, int] = {name: i for i, name in enumerate(fp_names)}
 
     n_before = len(df)

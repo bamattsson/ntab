@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from ntab_baseline.chemprop_utils import MolGraphCache, collate_batch
+from ntab_baseline.chemprop_utils import collate_batch, smiles_to_molgraph
 from ntab_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
 from ntab_baseline.dataset import AffinityDataset
 from ntab_baseline.model import AffinityModel
@@ -18,7 +18,7 @@ def _make_chemprop_dataset(n: int = 6) -> AffinityDataset:
     props_matrix = torch.from_numpy(
         rng.standard_normal((n, N_MOL_PROP_FEATURES)).astype(np.float32)
     )
-    cache = MolGraphCache()
+    mol_graphs = [smiles_to_molgraph(s) for s in SMILES[:n]]
     return AffinityDataset(
         fps_matrix=fps_matrix,
         props_matrix=props_matrix,
@@ -27,8 +27,7 @@ def _make_chemprop_dataset(n: int = 6) -> AffinityDataset:
         standard_type_indices=[0] * n,
         labels=rng.random(n).astype(np.float32) * 4 + 4,
         assay_ids=[f"A_{i % 2}" for i in range(n)],
-        smiles=SMILES[:n],
-        mol_graph_fn=cache,
+        mol_graphs=mol_graphs,
     )
 
 

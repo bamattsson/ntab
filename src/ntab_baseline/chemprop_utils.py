@@ -1,4 +1,4 @@
-"""Chemprop utilities: SMILES-to-MolGraph conversion, caching, and batch collation."""
+"""Chemprop utilities: SMILES-to-MolGraph conversion and batch collation."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import torch
 from chemprop.data import BatchMolGraph, MolGraph
 from chemprop.featurizers import SimpleMoleculeMolGraphFeaturizer
 from rdkit import Chem
+from tqdm import tqdm
 
 
 def get_featurizer() -> SimpleMoleculeMolGraphFeaturizer:
@@ -13,24 +14,52 @@ def get_featurizer() -> SimpleMoleculeMolGraphFeaturizer:
     return SimpleMoleculeMolGraphFeaturizer()
 
 
-class MolGraphCache:
-    """Converts SMILES to MolGraph with in-memory caching.
+def smiles_to_molgraph(
+    smiles: str,
+    featurizer: SimpleMoleculeMolGraphFeaturizer | None = None,
+) -> MolGraph:
+    """Convert a SMILES string to a Chemprop MolGraph.
 
     Args:
+        smiles: SMILES string.
         featurizer: Chemprop featurizer. Uses the default if not provided.
+
+    Returns:
+        MolGraph NamedTuple with atom features, bond features, and edge indices.
+
+    Raises:
+        ValueError: If RDKit cannot parse the SMILES.
     """
+    feat = featurizer or get_featurizer()
+    mol = Chem.MolFromSmiles(smiles)
+    if mol is None:
+        raise ValueError(f"RDKit could not parse SMILES: {smiles!r}")
+    return feat(mol)
 
-    def __init__(
-        self, featurizer: SimpleMoleculeMolGraphFeaturizer | None = None
-    ) -> None:
-        self._featurizer = featurizer or get_featurizer()
-        self._cache: dict[str, MolGraph] = {}
 
-    def __call__(self, smiles: str) -> MolGraph:
-        if smiles not in self._cache:
-            mol = Chem.MolFromSmiles(smiles)
-            self._cache[smiles] = self._featurizer(mol)
-        return self._cache[smiles]
+def precompute_molgraphs(
+    smiles_list: list[str],
+    featurizer: SimpleMoleculeMolGraphFeaturizer | None = None,
+) -> list[MolGraph | None]:
+    """Featurize a list of SMILES into MolGraph objects.
+
+    Args:
+        smiles_list: SMILES strings, one per unique compound.
+        featurizer: Chemprop featurizer. Uses the default if not provided.
+
+    Returns:
+        List of MolGraph objects (or None for unparseable SMILES), same order
+        and indexing as the input list.
+    """
+    feat = featurizer or get_featurizer()
+    results: list[MolGraph | None] = []
+    for smi in tqdm(smiles_list, desc="Featurizing MolGraphs"):
+        mol = Chem.MolFromSmiles(smi)
+        if mol is None:
+            results.append(None)
+        else:
+            results.append(feat(mol))
+    return results
 
 
 def collate_batch(batch: list[tuple]) -> tuple:

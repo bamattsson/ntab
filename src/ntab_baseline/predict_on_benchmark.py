@@ -140,12 +140,9 @@ def run_inference(
     props_per_row = props_t[fp_idx_t]
 
     use_chemprop = getattr(model.hparams, "use_chemprop", False)
-    mol_graph_cache = None
     if use_chemprop:
         from chemprop.data import BatchMolGraph
-        from ntab_baseline.chemprop_utils import MolGraphCache
-
-        mol_graph_cache = MolGraphCache()
+        from ntab_baseline.chemprop_utils import smiles_to_molgraph
 
     dataset = TensorDataset(fps_per_row, props_per_row, target_idx_t, std_t)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
@@ -166,7 +163,7 @@ def run_inference(
             if use_chemprop and smiles is not None:
                 batch_end = row_offset + fps_b.shape[0]
                 batch_smiles = smiles[row_offset:batch_end]
-                mol_graphs = [mol_graph_cache(s) for s in batch_smiles]
+                mol_graphs = [smiles_to_molgraph(s) for s in batch_smiles]
                 bmg = BatchMolGraph(mol_graphs)
                 bmg.to(device)
                 row_offset = batch_end

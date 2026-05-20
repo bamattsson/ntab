@@ -5,9 +5,10 @@ import pytest
 from chemprop.data import BatchMolGraph, MolGraph
 
 from ntab_baseline.chemprop_utils import (
-    MolGraphCache,
     collate_batch,
     get_featurizer,
+    precompute_molgraphs,
+    smiles_to_molgraph,
 )
 
 ETHANOL = "CCO"
@@ -27,39 +28,50 @@ class TestGetFeaturizer:
         assert f.bond_fdim > 0
 
 
-class TestMolGraphCache:
+class TestSmilesToMolgraph:
     def test_returns_molgraph(self):
-        cache = MolGraphCache()
-        mg = cache(ETHANOL)
-        assert isinstance(mg, MolGraph)
-
-    def test_caches_result(self):
-        cache = MolGraphCache()
-        mg1 = cache(ETHANOL)
-        mg2 = cache(ETHANOL)
-        assert mg1 is mg2
-
-    def test_different_smiles_different_graphs(self):
-        cache = MolGraphCache()
-        mg1 = cache(ETHANOL)
-        mg2 = cache(BENZENE)
-        assert mg1 is not mg2
-
-    def test_custom_featurizer(self):
-        f = get_featurizer()
-        cache = MolGraphCache(featurizer=f)
-        mg = cache(ASPIRIN)
+        mg = smiles_to_molgraph(ETHANOL)
         assert isinstance(mg, MolGraph)
 
     def test_molgraph_has_atoms_and_bonds(self):
-        cache = MolGraphCache()
-        mg = cache(ETHANOL)
+        mg = smiles_to_molgraph(ETHANOL)
         assert mg.V.shape[0] > 0
         assert mg.E.shape[0] > 0
 
+    def test_custom_featurizer(self):
+        f = get_featurizer()
+        mg = smiles_to_molgraph(ASPIRIN, featurizer=f)
+        assert isinstance(mg, MolGraph)
+
+    def test_invalid_smiles_raises(self):
+        with pytest.raises(ValueError, match="could not parse"):
+            smiles_to_molgraph("NOT_A_SMILES")
+
+    def test_different_smiles_different_graphs(self):
+        mg1 = smiles_to_molgraph(ETHANOL)
+        mg2 = smiles_to_molgraph(BENZENE)
+        assert mg1.V.shape != mg2.V.shape or mg1.E.shape != mg2.E.shape
+
+
+class TestPrecomputeMolgraphs:
+    def test_returns_list_of_molgraphs(self):
+        mgs = precompute_molgraphs([ETHANOL, BENZENE, ASPIRIN])
+        assert len(mgs) == 3
+        assert all(isinstance(mg, MolGraph) for mg in mgs)
+
+    def test_invalid_smiles_returns_none(self):
+        mgs = precompute_molgraphs([ETHANOL, "INVALID", BENZENE])
+        assert mgs[0] is not None
+        assert mgs[1] is None
+        assert mgs[2] is not None
+
+    def test_empty_list(self):
+        mgs = precompute_molgraphs([])
+        assert mgs == []
+
 
 class TestCollateBatch:
-    def _make_sample(self, smiles: str, cache: MolGraphCache):
+    def _make_sample(self, smiles: str):
         """Create a 7-element tuple mimicking AffinityDataset.__getitem__."""
         fp = torch.randn(2048)
         mol_props = torch.randn(12)
@@ -67,18 +79,16 @@ class TestCollateBatch:
         std_type_idx = torch.tensor(1)
         label = torch.tensor(5.5)
         assay_id = "CHEMBL123_IC50"
-        mol_graph = cache(smiles)
+        mol_graph = smiles_to_molgraph(smiles)
         return (fp, mol_props, target_idx, std_type_idx, label, assay_id, mol_graph)
 
     def test_returns_correct_number_of_elements(self):
-        cache = MolGraphCache()
-        batch = [self._make_sample(ETHANOL, cache), self._make_sample(BENZENE, cache)]
+        batch = [self._make_sample(ETHANOL), self._make_sample(BENZENE)]
         result = collate_batch(batch)
         assert len(result) == 7
 
     def test_tensors_are_stacked(self):
-        cache = MolGraphCache()
-        batch = [self._make_sample(ETHANOL, cache), self._make_sample(BENZENE, cache)]
+        batch = [self._make_sample(ETHANOL), self._make_sample(BENZENE)]
         fps, mol_props, target_idx, std_type_idx, labels, assay_ids, bmg = (
             collate_batch(batch)
         )
@@ -89,23 +99,20 @@ class TestCollateBatch:
         assert labels.shape == (2,)
 
     def test_assay_ids_are_list(self):
-        cache = MolGraphCache()
-        batch = [self._make_sample(ETHANOL, cache), self._make_sample(BENZENE, cache)]
+        batch = [self._make_sample(ETHANOL), self._make_sample(BENZENE)]
         result = collate_batch(batch)
         assay_ids = result[5]
         assert isinstance(assay_ids, list)
         assert len(assay_ids) == 2
 
     def test_bmg_is_batch_mol_graph(self):
-        cache = MolGraphCache()
-        batch = [self._make_sample(ETHANOL, cache), self._make_sample(BENZENE, cache)]
+        batch = [self._make_sample(ETHANOL), self._make_sample(BENZENE)]
         result = collate_batch(batch)
         bmg = result[6]
         assert isinstance(bmg, BatchMolGraph)
 
     def test_single_sample_batch(self):
-        cache = MolGraphCache()
-        batch = [self._make_sample(ASPIRIN, cache)]
+        batch = [self._make_sample(ASPIRIN)]
         fps, mol_props, target_idx, std_type_idx, labels, assay_ids, bmg = (
             collate_batch(batch)
         )

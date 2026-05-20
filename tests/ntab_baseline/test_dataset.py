@@ -190,38 +190,36 @@ class TestAffinityDataset:
         total = sum(fps.shape[0] for fps, _, _, _, _, _, _ in loader)
         assert total == 6
 
-    def test_mol_graph_is_none_without_smiles(self) -> None:
+    def test_mol_graph_is_none_without_mol_graphs(self) -> None:
         ds = _make_dataset()
         *_, mol_graph = ds[0]
         assert mol_graph is None
 
-    def test_mol_graph_returned_with_smiles_and_fn(self) -> None:
+    def test_mol_graph_returned_with_precomputed_list(self) -> None:
         from chemprop.data import MolGraph
-        from ntab_baseline.chemprop_utils import MolGraphCache
+        from ntab_baseline.chemprop_utils import smiles_to_molgraph
 
         fps_matrix = _make_fps_matrix(2)
         props_matrix = _make_props_matrix(2)
         labels = np.array([6.0, 7.0], dtype=np.float32)
-        smiles = ["CCO", "c1ccccc1"]
-        cache = MolGraphCache()
+        mol_graphs = [smiles_to_molgraph("CCO"), smiles_to_molgraph("c1ccccc1")]
         ds = AffinityDataset(
             fps_matrix, props_matrix, [0, 1], [0, 1], [0, 0],
-            labels, ["A", "B"], smiles=smiles, mol_graph_fn=cache,
+            labels, ["A", "B"], mol_graphs=mol_graphs,
         )
         *_, mol_graph = ds[0]
         assert isinstance(mol_graph, MolGraph)
 
-    def test_mol_graph_cached_across_calls(self) -> None:
-        from ntab_baseline.chemprop_utils import MolGraphCache
+    def test_mol_graph_shared_across_same_fp_index(self) -> None:
+        from ntab_baseline.chemprop_utils import smiles_to_molgraph
 
         fps_matrix = _make_fps_matrix(2)
         props_matrix = _make_props_matrix(2)
         labels = np.array([6.0, 7.0], dtype=np.float32)
-        smiles = ["CCO", "CCO"]
-        cache = MolGraphCache()
+        mol_graphs = [smiles_to_molgraph("CCO"), smiles_to_molgraph("c1ccccc1")]
         ds = AffinityDataset(
-            fps_matrix, props_matrix, [0, 1], [0, 1], [0, 0],
-            labels, ["A", "B"], smiles=smiles, mol_graph_fn=cache,
+            fps_matrix, props_matrix, [0, 0], [0, 1], [0, 0],
+            labels, ["A", "B"], mol_graphs=mol_graphs,
         )
         *_, mg1 = ds[0]
         *_, mg2 = ds[1]

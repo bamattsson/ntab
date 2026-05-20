@@ -269,10 +269,9 @@ class TestAffinityModelSteps:
 def _make_bmg(smiles_list: list[str]):
     """Build a BatchMolGraph from a list of SMILES."""
     from chemprop.data import BatchMolGraph
-    from ntab_baseline.chemprop_utils import MolGraphCache
+    from ntab_baseline.chemprop_utils import smiles_to_molgraph
 
-    cache = MolGraphCache()
-    mol_graphs = [cache(s) for s in smiles_list]
+    mol_graphs = [smiles_to_molgraph(s) for s in smiles_list]
     return BatchMolGraph(mol_graphs)
 
 

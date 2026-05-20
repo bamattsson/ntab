@@ -7,6 +7,7 @@ Usage:
 from __future__ import annotations
 
 import json
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -15,7 +16,7 @@ from lightning.pytorch.cli import LightningCLI
 import torch
 from torch.utils.data import DataLoader
 
-from ntab_baseline.chemprop_utils import MolGraphCache, collate_batch
+from ntab_baseline.chemprop_utils import collate_batch
 from ntab_baseline.constants import MOL_PROP_FEATURES
 from ntab_baseline.dataset import AffinityDataset
 from ntab_baseline.model import AffinityModel
@@ -58,10 +59,9 @@ class AffinityDataModule(L.LightningDataModule):
         name: str,
         fps_matrix: torch.Tensor,
         mol_props_matrix: torch.Tensor,
-        mol_graph_cache: MolGraphCache | None = None,
+        mol_graphs: list | None = None,
     ) -> AffinityDataset:
         data = np.load(self.data_dir / f"{name}.npz", allow_pickle=True)
-        smiles = data["smiles"].tolist() if self.use_chemprop else None
         return AffinityDataset(
             fps_matrix=fps_matrix,
             props_matrix=mol_props_matrix,
@@ -70,8 +70,7 @@ class AffinityDataModule(L.LightningDataModule):
             standard_type_indices=data["standard_type_indices"],
             labels=data["labels"],
             assay_ids=data["assay_ids"].tolist(),
-            smiles=smiles,
-            mol_graph_fn=mol_graph_cache,
+            mol_graphs=mol_graphs,
         )
 
     def setup(self, stage: str | None = None) -> None:
@@ -93,16 +92,22 @@ class AffinityDataModule(L.LightningDataModule):
             f"  Loaded: {mol_props_matrix.shape} ({len(MOL_PROP_FEATURES)} features: {MOL_PROP_FEATURES})"
         )
 
-        mol_graph_cache = MolGraphCache() if self.use_chemprop else None
+        mol_graphs = None
+        if self.use_chemprop:
+            mg_path = self.data_dir / "molgraphs.pkl"
+            print(f"Loading precomputed MolGraphs from {mg_path}...")
+            with open(mg_path, "rb") as f:
+                mol_graphs = pickle.load(f)
+            print(f"  Loaded {len(mol_graphs)} MolGraph objects")
 
         self._train_ds = self._load_split(
-            "train", fps_matrix, mol_props_matrix, mol_graph_cache
+            "train", fps_matrix, mol_props_matrix, mol_graphs
         )
         self._val_ds = self._load_split(
-            "val", fps_matrix, mol_props_matrix, mol_graph_cache
+            "val", fps_matrix, mol_props_matrix, mol_graphs
         )
         self._test_ds = self._load_split(
-            "test", fps_matrix, mol_props_matrix, mol_graph_cache
+            "test", fps_matrix, mol_props_matrix, mol_graphs
         )
 
     def train_dataloader(self) -> DataLoader:
