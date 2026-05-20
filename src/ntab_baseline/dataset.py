@@ -1,12 +1,16 @@
 """PyTorch Dataset for the binding prediction baseline."""
 
+from __future__ import annotations
+
+from typing import Any, Callable
+
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
 
 class AffinityDataset(Dataset):
-    """Dataset of (fingerprint, props, target_index, standard_type_index, pchembl_label, assay_id) tuples.
+    """Dataset of (fingerprint, props, target_index, standard_type_index, pchembl_label, assay_id, mol_graph) tuples.
 
     Fingerprints and mol properties are looked up from shared pre-loaded matrices
     using per-sample indices — no data is copied or stored per-sample.
@@ -21,6 +25,9 @@ class AffinityDataset(Dataset):
         standard_type_indices: Integer standard type index per sample, length N.
         labels: pchembl_value_filled per sample, length N.
         assay_ids: Assay identifier string per sample, length N.
+        smiles: SMILES string per sample, length N. Required when using Chemprop.
+        mol_graph_fn: Callable that converts a SMILES string to a MolGraph object.
+            Typically a MolGraphCache instance. Required when smiles is provided.
     """
 
     def __init__(
@@ -32,6 +39,8 @@ class AffinityDataset(Dataset):
         standard_type_indices: list[int] | np.ndarray,
         labels: np.ndarray,
         assay_ids: list[str],
+        smiles: list[str] | None = None,
+        mol_graph_fn: Callable[[str], Any] | None = None,
     ) -> None:
         self._fps = fps_matrix
         self._mol_props = props_matrix
@@ -42,17 +51,18 @@ class AffinityDataset(Dataset):
         )
         self._labels = torch.tensor(labels, dtype=torch.float32)
         self._assay_ids = list(assay_ids)
+        self._smiles = list(smiles) if smiles is not None else None
+        self._mol_graph_fn = mol_graph_fn
 
     def __len__(self) -> int:
         return len(self._labels)
 
-    def __getitem__(
-        self, idx: int
-    ) -> tuple[
-        torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, str
-    ]:
+    def __getitem__(self, idx: int) -> tuple:
         fp = self._fps[self._fp_indices[idx]]
         mol_props = self._mol_props[self._fp_indices[idx]]
+        mol_graph = None
+        if self._smiles is not None and self._mol_graph_fn is not None:
+            mol_graph = self._mol_graph_fn(self._smiles[idx])
         return (
             fp,
             mol_props,
@@ -60,4 +70,5 @@ class AffinityDataset(Dataset):
             self._standard_type_indices[idx],
             self._labels[idx],
             self._assay_ids[idx],
+            mol_graph,
         )

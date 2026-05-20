@@ -3,6 +3,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
+from ntab_baseline.chemprop_utils import collate_batch
 from ntab_baseline.dataset import AffinityDataset
 
 
@@ -54,33 +55,33 @@ class TestAffinityDataset:
         ds = _make_dataset(n=7, n_unique=3)
         assert len(ds) == 7
 
-    def test_getitem_returns_six_elements(self) -> None:
+    def test_getitem_returns_seven_elements(self) -> None:
         ds = _make_dataset()
-        assert len(ds[0]) == 6
+        assert len(ds[0]) == 7
 
     def test_fingerprint_is_float32_tensor_of_correct_size(self) -> None:
         ds = _make_dataset()
-        fp, _, _, _, _, _ = ds[0]
+        fp, _, _, _, _, _, _ = ds[0]
         assert isinstance(fp, torch.Tensor)
         assert fp.dtype == torch.float32
         assert fp.shape == (2048,)
 
     def test_props_is_float32_tensor_of_correct_size(self) -> None:
         ds = _make_dataset()
-        _, props, _, _, _, _ = ds[0]
+        _, props, _, _, _, _, _ = ds[0]
         assert isinstance(props, torch.Tensor)
         assert props.dtype == torch.float32
         assert props.shape == (N_PROPS,)
 
     def test_target_idx_is_long_tensor(self) -> None:
         ds = _make_dataset()
-        _, _, target_idx, _, _, _ = ds[0]
+        _, _, target_idx, _, _, _, _ = ds[0]
         assert isinstance(target_idx, torch.Tensor)
         assert target_idx.dtype == torch.long
 
     def test_standard_type_idx_is_long_tensor(self) -> None:
         ds = _make_dataset()
-        _, _, _, std_type_idx, _, _ = ds[0]
+        _, _, _, std_type_idx, _, _, _ = ds[0]
         assert isinstance(std_type_idx, torch.Tensor)
         assert std_type_idx.dtype == torch.long
 
@@ -97,19 +98,19 @@ class TestAffinityDataset:
             labels,
             ["A", "B", "C"],
         )
-        _, _, _, std_type_idx, _, _ = ds[1]
+        _, _, _, std_type_idx, _, _, _ = ds[1]
         assert std_type_idx.item() == 1
 
     def test_label_is_scalar_float32_tensor(self) -> None:
         ds = _make_dataset()
-        _, _, _, _, label, _ = ds[0]
+        _, _, _, _, label, _, _ = ds[0]
         assert isinstance(label, torch.Tensor)
         assert label.dtype == torch.float32
         assert label.shape == ()
 
     def test_assay_id_is_string(self) -> None:
         ds = _make_dataset()
-        _, _, _, _, _, assay_id = ds[0]
+        _, _, _, _, _, assay_id, _ = ds[0]
         assert isinstance(assay_id, str)
 
     def test_fp_indices_look_up_correct_row_from_shared_matrix(self) -> None:
@@ -123,8 +124,8 @@ class TestAffinityDataset:
             fps_matrix, props_matrix, fp_indices, [0, 1], [0, 0], labels, ["A", "B"]
         )
 
-        fp0, _, _, _, _, _ = ds[0]
-        fp1, _, _, _, _, _ = ds[1]
+        fp0, _, _, _, _, _, _ = ds[0]
+        fp1, _, _, _, _, _, _ = ds[1]
         assert fp0[100].item() == 1.0  # from row 1
         assert fp1[0].item() == 1.0  # from row 0
 
@@ -142,7 +143,7 @@ class TestAffinityDataset:
             ["A", "B", "C"],
         )
 
-        _, _, t_idx, std_type_idx, label, assay_id = ds[1]
+        _, _, t_idx, std_type_idx, label, assay_id, _ = ds[1]
         assert t_idx.item() == 1
         assert std_type_idx.item() == 1
         assert pytest.approx(label.item()) == 7.0
@@ -165,7 +166,7 @@ class TestAffinityDataset:
 
     def test_dataloader_batches_correctly(self) -> None:
         ds = _make_dataset(n=8, n_unique=3)
-        loader = DataLoader(ds, batch_size=4, shuffle=False)
+        loader = DataLoader(ds, batch_size=4, shuffle=False, collate_fn=collate_batch)
         (
             fps_batch,
             props_batch,
@@ -173,6 +174,7 @@ class TestAffinityDataset:
             std_type_batch,
             label_batch,
             assay_batch,
+            mg_batch,
         ) = next(iter(loader))
 
         assert fps_batch.shape == (4, 2048)
@@ -184,6 +186,43 @@ class TestAffinityDataset:
 
     def test_dataloader_covers_all_samples(self) -> None:
         ds = _make_dataset(n=6, n_unique=2)
-        loader = DataLoader(ds, batch_size=2, shuffle=False)
-        total = sum(fps.shape[0] for fps, _, _, _, _, _ in loader)
+        loader = DataLoader(ds, batch_size=2, shuffle=False, collate_fn=collate_batch)
+        total = sum(fps.shape[0] for fps, _, _, _, _, _, _ in loader)
         assert total == 6
+
+    def test_mol_graph_is_none_without_smiles(self) -> None:
+        ds = _make_dataset()
+        *_, mol_graph = ds[0]
+        assert mol_graph is None
+
+    def test_mol_graph_returned_with_smiles_and_fn(self) -> None:
+        from chemprop.data import MolGraph
+        from ntab_baseline.chemprop_utils import MolGraphCache
+
+        fps_matrix = _make_fps_matrix(2)
+        props_matrix = _make_props_matrix(2)
+        labels = np.array([6.0, 7.0], dtype=np.float32)
+        smiles = ["CCO", "c1ccccc1"]
+        cache = MolGraphCache()
+        ds = AffinityDataset(
+            fps_matrix, props_matrix, [0, 1], [0, 1], [0, 0],
+            labels, ["A", "B"], smiles=smiles, mol_graph_fn=cache,
+        )
+        *_, mol_graph = ds[0]
+        assert isinstance(mol_graph, MolGraph)
+
+    def test_mol_graph_cached_across_calls(self) -> None:
+        from ntab_baseline.chemprop_utils import MolGraphCache
+
+        fps_matrix = _make_fps_matrix(2)
+        props_matrix = _make_props_matrix(2)
+        labels = np.array([6.0, 7.0], dtype=np.float32)
+        smiles = ["CCO", "CCO"]
+        cache = MolGraphCache()
+        ds = AffinityDataset(
+            fps_matrix, props_matrix, [0, 1], [0, 1], [0, 0],
+            labels, ["A", "B"], smiles=smiles, mol_graph_fn=cache,
+        )
+        *_, mg1 = ds[0]
+        *_, mg2 = ds[1]
+        assert mg1 is mg2

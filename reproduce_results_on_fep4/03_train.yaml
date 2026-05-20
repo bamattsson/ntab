@@ -22,7 +22,9 @@ trainer:
 data:
   data_dir: out_FEP4_baseline/data_preprocessing
   num_workers: 4
+  use_chemprop: true
 
 model:
-  use_fps: true
-  use_mol_props: true
+  use_fps: false
+  use_mol_props: false
+  use_chemprop: true

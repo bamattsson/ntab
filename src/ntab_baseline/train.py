@@ -4,6 +4,8 @@ Usage:
     uv run python -m ntab_baseline.train fit --config configs/baseline/train.yaml
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
 
@@ -13,6 +15,7 @@ from lightning.pytorch.cli import LightningCLI
 import torch
 from torch.utils.data import DataLoader
 
+from ntab_baseline.chemprop_utils import MolGraphCache, collate_batch
 from ntab_baseline.constants import MOL_PROP_FEATURES
 from ntab_baseline.dataset import AffinityDataset
 from ntab_baseline.model import AffinityModel
@@ -29,6 +32,7 @@ class AffinityDataModule(L.LightningDataModule):
             fingerprints_ecfp4.npz, and meta.json (written by preprocess_training_data.py).
         batch_size: Training and evaluation batch size.
         num_workers: DataLoader worker processes.
+        use_chemprop: Whether to load SMILES and build MolGraphs for Chemprop.
     """
 
     def __init__(
@@ -36,11 +40,13 @@ class AffinityDataModule(L.LightningDataModule):
         data_dir: str,
         batch_size: int = 256,
         num_workers: int = 4,
+        use_chemprop: bool = False,
     ) -> None:
         super().__init__()
         self.data_dir = Path(data_dir)
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.use_chemprop = use_chemprop
 
         meta = json.loads((self.data_dir / "meta.json").read_text())
         self.n_targets: int = meta["n_targets"]
@@ -48,9 +54,14 @@ class AffinityDataModule(L.LightningDataModule):
         self.n_mol_props: int = len(MOL_PROP_FEATURES)
 
     def _load_split(
-        self, name: str, fps_matrix: torch.Tensor, mol_props_matrix: torch.Tensor
+        self,
+        name: str,
+        fps_matrix: torch.Tensor,
+        mol_props_matrix: torch.Tensor,
+        mol_graph_cache: MolGraphCache | None = None,
     ) -> AffinityDataset:
         data = np.load(self.data_dir / f"{name}.npz", allow_pickle=True)
+        smiles = data["smiles"].tolist() if self.use_chemprop else None
         return AffinityDataset(
             fps_matrix=fps_matrix,
             props_matrix=mol_props_matrix,
@@ -59,6 +70,8 @@ class AffinityDataModule(L.LightningDataModule):
             standard_type_indices=data["standard_type_indices"],
             labels=data["labels"],
             assay_ids=data["assay_ids"].tolist(),
+            smiles=smiles,
+            mol_graph_fn=mol_graph_cache,
         )
 
     def setup(self, stage: str | None = None) -> None:
@@ -80,9 +93,17 @@ class AffinityDataModule(L.LightningDataModule):
             f"  Loaded: {mol_props_matrix.shape} ({len(MOL_PROP_FEATURES)} features: {MOL_PROP_FEATURES})"
         )
 
-        self._train_ds = self._load_split("train", fps_matrix, mol_props_matrix)
-        self._val_ds = self._load_split("val", fps_matrix, mol_props_matrix)
-        self._test_ds = self._load_split("test", fps_matrix, mol_props_matrix)
+        mol_graph_cache = MolGraphCache() if self.use_chemprop else None
+
+        self._train_ds = self._load_split(
+            "train", fps_matrix, mol_props_matrix, mol_graph_cache
+        )
+        self._val_ds = self._load_split(
+            "val", fps_matrix, mol_props_matrix, mol_graph_cache
+        )
+        self._test_ds = self._load_split(
+            "test", fps_matrix, mol_props_matrix, mol_graph_cache
+        )
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
@@ -91,6 +112,7 @@ class AffinityDataModule(L.LightningDataModule):
             shuffle=True,
             num_workers=self.num_workers,
             pin_memory=True,
+            collate_fn=collate_batch,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -100,6 +122,7 @@ class AffinityDataModule(L.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
+            collate_fn=collate_batch,
         )
 
     def test_dataloader(self) -> DataLoader:
@@ -109,6 +132,7 @@ class AffinityDataModule(L.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=True,
+            collate_fn=collate_batch,
         )
 
 

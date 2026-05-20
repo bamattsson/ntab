@@ -32,9 +32,8 @@ def _make_batch(
     batch_size: int = 8,
     n_targets: int = 10,
     n_standard_types: int = 3,
-) -> tuple[
-    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, list[str]
-]:
+    bmg: object | None = None,
+) -> tuple:
     rng = torch.Generator().manual_seed(0)
     fps = torch.rand(batch_size, FP_SIZE, generator=rng)
     props = torch.randn(batch_size, N_MOL_PROP_FEATURES)
@@ -42,7 +41,7 @@ def _make_batch(
     standard_type_idx = torch.randint(0, n_standard_types, (batch_size,))
     labels = torch.rand(batch_size) * 5 + 4
     assay_ids = [f"ASSAY_{i % 3}" for i in range(batch_size)]
-    return fps, props, target_idx, standard_type_idx, labels, assay_ids
+    return fps, props, target_idx, standard_type_idx, labels, assay_ids, bmg
 
 
 # ---------------------------------------------------------------------------
@@ -136,19 +135,19 @@ class TestPearsonRPerAssay:
 class TestAffinityModelForward:
     def test_output_shape_is_batch_by_1(self) -> None:
         model = _make_model()
-        fps, props, target_idx, standard_type_idx, _, _ = _make_batch(batch_size=8)
+        fps, props, target_idx, standard_type_idx, _, _, _ = _make_batch(batch_size=8)
         out = model(fps, props, target_idx, standard_type_idx)
         assert out.shape == (8, 1)
 
     def test_output_shape_batch_size_1(self) -> None:
         model = _make_model().eval()
-        fps, props, target_idx, standard_type_idx, _, _ = _make_batch(batch_size=1)
+        fps, props, target_idx, standard_type_idx, _, _, _ = _make_batch(batch_size=1)
         out = model(fps, props, target_idx, standard_type_idx)
         assert out.shape == (1, 1)
 
     def test_output_is_float32(self) -> None:
         model = _make_model()
-        fps, props, target_idx, standard_type_idx, _, _ = _make_batch()
+        fps, props, target_idx, standard_type_idx, _, _, _ = _make_batch()
         out = model(fps, props, target_idx, standard_type_idx)
         assert out.dtype == torch.float32
 
@@ -199,7 +198,7 @@ class TestAffinityModelSteps:
         standard_type_idx = torch.tensor([0, 0, 0, 0])
         labels = torch.tensor([5.0, 5.0, 8.0, 8.0])
         assay_ids = ["A", "A", "A", "A"]
-        batch = (fps, props, target_idx, standard_type_idx, labels, assay_ids)
+        batch = (fps, props, target_idx, standard_type_idx, labels, assay_ids, None)
 
         losses = []
         for _ in range(30):
@@ -219,7 +218,7 @@ class TestAffinityModelSteps:
         standard_type_idx = torch.zeros(6, dtype=torch.long)
         labels = torch.rand(6)
         assay_ids = ["A"] * 6
-        batch = (fps, props, target_idx, standard_type_idx, labels, assay_ids)
+        batch = (fps, props, target_idx, standard_type_idx, labels, assay_ids, None)
         model.validation_step(batch, batch_idx=0)  # should not raise
 
     def test_validation_step_accumulates_state(self) -> None:
@@ -246,8 +245,8 @@ class TestAffinityModelSteps:
         props = torch.zeros(2, N_MOL_PROP_FEATURES)
         t = torch.zeros(2, dtype=torch.long)
         s = torch.zeros(2, dtype=torch.long)
-        batch1 = (fp, props, t, s, torch.tensor([1.0, 2.0]), ["A", "A"])
-        batch2 = (fp, props, t, s, torch.tensor([3.0, 4.0]), ["A", "A"])
+        batch1 = (fp, props, t, s, torch.tensor([1.0, 2.0]), ["A", "A"], None)
+        batch2 = (fp, props, t, s, torch.tensor([3.0, 4.0]), ["A", "A"], None)
         model.validation_step(batch1, batch_idx=0)
         model.validation_step(batch2, batch_idx=1)
         # 4 samples accumulated across both batches
@@ -260,3 +259,96 @@ class TestAffinityModelSteps:
         assert len(model._test_preds) == 1
         model.on_test_epoch_end()
         assert model._test_preds == []
+
+
+# ---------------------------------------------------------------------------
+# AffinityModel — Chemprop integration
+# ---------------------------------------------------------------------------
+
+
+def _make_bmg(smiles_list: list[str]):
+    """Build a BatchMolGraph from a list of SMILES."""
+    from chemprop.data import BatchMolGraph
+    from ntab_baseline.chemprop_utils import MolGraphCache
+
+    cache = MolGraphCache()
+    mol_graphs = [cache(s) for s in smiles_list]
+    return BatchMolGraph(mol_graphs)
+
+
+def _make_chemprop_model(
+    n_targets: int = 10,
+    hidden_dim: int = 64,
+    embed_dim: int = 16,
+    chemprop_d_h: int = 32,
+    use_fps: bool = False,
+    use_mol_props: bool = False,
+) -> AffinityModel:
+    return AffinityModel(
+        n_targets=n_targets,
+        hidden_dim=hidden_dim,
+        target_embed_dim=embed_dim,
+        min_assay_size=3,
+        use_fps=use_fps,
+        use_mol_props=use_mol_props,
+        use_chemprop=True,
+        chemprop_d_h=chemprop_d_h,
+        lr=1e-3,
+    )
+
+
+SMILES_4 = ["CCO", "c1ccccc1", "CC(=O)O", "CCN"]
+
+
+class TestAffinityModelChemprop:
+    def test_forward_chemprop_only(self) -> None:
+        model = _make_chemprop_model(use_fps=False, use_mol_props=False)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        fps = torch.zeros(batch_size, FP_SIZE)
+        props = torch.zeros(batch_size, N_MOL_PROP_FEATURES)
+        target_idx = torch.zeros(batch_size, dtype=torch.long)
+        std_type_idx = torch.zeros(batch_size, dtype=torch.long)
+        out = model(fps, props, target_idx, std_type_idx, bmg=bmg)
+        assert out.shape == (batch_size, 1)
+
+    def test_forward_chemprop_plus_fps(self) -> None:
+        model = _make_chemprop_model(use_fps=True, use_mol_props=False)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        fps = torch.rand(batch_size, FP_SIZE)
+        props = torch.zeros(batch_size, N_MOL_PROP_FEATURES)
+        target_idx = torch.zeros(batch_size, dtype=torch.long)
+        std_type_idx = torch.zeros(batch_size, dtype=torch.long)
+        out = model(fps, props, target_idx, std_type_idx, bmg=bmg)
+        assert out.shape == (batch_size, 1)
+
+    def test_forward_chemprop_plus_all(self) -> None:
+        model = _make_chemprop_model(use_fps=True, use_mol_props=True)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        fps = torch.rand(batch_size, FP_SIZE)
+        props = torch.randn(batch_size, N_MOL_PROP_FEATURES)
+        target_idx = torch.zeros(batch_size, dtype=torch.long)
+        std_type_idx = torch.zeros(batch_size, dtype=torch.long)
+        out = model(fps, props, target_idx, std_type_idx, bmg=bmg)
+        assert out.shape == (batch_size, 1)
+
+    def test_shared_step_with_chemprop(self) -> None:
+        model = _make_chemprop_model(use_fps=False, use_mol_props=False)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        batch = _make_batch(batch_size=batch_size, bmg=bmg)
+        loss, preds, labels, assay_ids, n = model._shared_step(batch)
+        assert loss.shape == ()
+        assert preds.shape == (batch_size,)
+
+    def test_chemprop_model_has_mp_and_agg(self) -> None:
+        model = _make_chemprop_model()
+        assert hasattr(model, "chemprop_mp")
+        assert hasattr(model, "chemprop_agg")
+
+    def test_no_chemprop_attrs_when_disabled(self) -> None:
+        model = _make_model()
+        assert not hasattr(model, "chemprop_mp")
+        assert not hasattr(model, "chemprop_agg")

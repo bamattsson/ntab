@@ -115,6 +115,10 @@ def predict_on_csv(
     print(f"Loading model from {checkpoint_path}")
     model = AffinityModel.load_from_checkpoint(str(checkpoint_path), map_location="cpu")
 
+    smiles_list: list[str] | None = None
+    if getattr(model.hparams, "use_chemprop", False):
+        smiles_list = df_filtered["smiles"].tolist()
+
     print("Running inference...")
     pred_pchembl = run_inference(
         model,
@@ -125,6 +129,7 @@ def predict_on_csv(
         std_type_indices,
         batch_size=batch_size,
         device=device,
+        smiles=smiles_list,
     )
 
     output_df = _assemble_output_df(df_filtered, pred_pchembl)

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "ntab"
 version = "0.1.0"
 description = "Time-split, novelty-filtered benchmark for protein-ligand binding affinity prediction"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
@@ -29,6 +29,7 @@ baseline = [
     "lightning>=2.0",
     "jsonargparse[signatures]>=4.27.7",
     "biopython>=1.80",
+    "chemprop>=2.0",
 ]
 dev = [
     "pytest",

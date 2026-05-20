@@ -278,6 +278,7 @@ def main() -> None:
             labels=split_df["pchembl_value_filled"].values.astype(np.float32),
             assay_ids=np.array(split_df["assay_id_for_eval"].tolist()),
             ligand_ids=np.array(split_df["ligand_chembl_id"].tolist()),
+            smiles=np.array(split_df["canonical_smiles"].tolist()),
         )
         print(f"  Saved {out_path.name}: {len(fp_indices)} samples")
 

@@ -15,6 +15,8 @@ Usage
         --output predictions.csv
 """
 
+from __future__ import annotations
+
 import argparse
 from pathlib import Path
 
@@ -107,6 +109,7 @@ def run_inference(
     std_type_indices: np.ndarray,
     batch_size: int = 512,
     device: str | None = None,
+    smiles: list[str] | None = None,
 ) -> np.ndarray:
     """Run model inference and return predictions as a numpy array.
 
@@ -119,6 +122,7 @@ def run_inference(
         std_type_indices: int64 array (N_rows,).
         batch_size: DataLoader batch size.
         device: Torch device string. Defaults to "cuda" if available, else "cpu".
+        smiles: Per-row SMILES strings. Required when model.use_chemprop is True.
 
     Returns:
         float32 numpy array of shape (N_rows,).
@@ -132,9 +136,16 @@ def run_inference(
     target_idx_t = torch.tensor(target_indices, dtype=torch.long)
     std_t = torch.tensor(std_type_indices, dtype=torch.long)
 
-    # Gather per-row features from shared compound matrices
     fps_per_row = fp_t[fp_idx_t]
     props_per_row = props_t[fp_idx_t]
+
+    use_chemprop = getattr(model.hparams, "use_chemprop", False)
+    mol_graph_cache = None
+    if use_chemprop:
+        from chemprop.data import BatchMolGraph
+        from ntab_baseline.chemprop_utils import MolGraphCache
+
+        mol_graph_cache = MolGraphCache()
 
     dataset = TensorDataset(fps_per_row, props_per_row, target_idx_t, std_t)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
@@ -143,13 +154,25 @@ def run_inference(
     model.eval()
 
     all_preds: list[torch.Tensor] = []
+    row_offset = 0
     with torch.no_grad():
         for fps_b, props_b, target_idx_b, std_type_idx_b in loader:
             fps_b = fps_b.to(device)
             props_b = props_b.to(device)
             target_idx_b = target_idx_b.to(device)
             std_type_idx_b = std_type_idx_b.to(device)
-            preds = model(fps_b, props_b, target_idx_b, std_type_idx_b).squeeze(1)
+
+            bmg = None
+            if use_chemprop and smiles is not None:
+                batch_end = row_offset + fps_b.shape[0]
+                batch_smiles = smiles[row_offset:batch_end]
+                mol_graphs = [mol_graph_cache(s) for s in batch_smiles]
+                bmg = BatchMolGraph(mol_graphs).to(device)
+                row_offset = batch_end
+
+            preds = model(
+                fps_b, props_b, target_idx_b, std_type_idx_b, bmg=bmg
+            ).squeeze(1)
             all_preds.append(preds.cpu())
 
     return torch.cat(all_preds).numpy()
@@ -304,6 +327,10 @@ def evaluate_splits(
     print(f"Loading model from {checkpoint_path}")
     model = AffinityModel.load_from_checkpoint(str(checkpoint_path), map_location="cpu")
 
+    smiles_list: list[str] | None = None
+    if getattr(model.hparams, "use_chemprop", False):
+        smiles_list = df_filtered["smiles"].tolist()
+
     print("Running inference...")
     pred_pchembl = run_inference(
         model,
@@ -313,6 +340,7 @@ def evaluate_splits(
         target_indices,
         std_type_indices,
         batch_size=batch_size,
+        smiles=smiles_list,
     )
 
     output_df = _assemble_output_df(df_filtered, pred_pchembl)
