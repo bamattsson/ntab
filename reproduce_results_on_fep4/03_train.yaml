@@ -28,3 +28,5 @@ model:
   use_fps: false
   use_mol_props: false
   use_chemprop: true
+  chemprop_d_h: 2048
+  chemprop_depth: 4
