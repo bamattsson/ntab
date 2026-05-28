@@ -133,10 +133,10 @@ def compute_model_stats(
                 }
             )
 
-        r, r_ci_low, r_ci_high = aggregate_per_assay(
+        r, r_ci_low, r_ci_high, _ = aggregate_per_assay(
             r_vals, n_bootstrap=n_bootstrap, seed_bootstrap=42
         )
-        mae, mae_ci_low, mae_ci_high = aggregate_per_assay(
+        mae, mae_ci_low, mae_ci_high, _ = aggregate_per_assay(
             mae_vals, n_bootstrap=n_bootstrap, seed_bootstrap=42
         )
 

@@ -75,7 +75,7 @@ class TestPearsonRPerAssay:
         _, r_vals, _ = pearson_r_per_assay(
             preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
         )
-        mean, _, _ = aggregate_per_assay(r_vals)
+        mean, _, _, _ = aggregate_per_assay(r_vals)
         assert pytest.approx(mean, abs=1e-5) == 0.0
 
     def test_assays_below_min_size_are_skipped(self) -> None:
@@ -121,8 +121,8 @@ class TestPearsonRPerAssay:
         _, r_vals, sizes = pearson_r_per_assay(
             preds, labels, assay_ids, min_assay_size=3
         )
-        r_macro, _, _ = aggregate_per_assay(r_vals)
-        r_weighted, _, _ = aggregate_per_assay(r_vals, assay_size=sizes, weighted=True)
+        r_macro, _, _, _ = aggregate_per_assay(r_vals)
+        r_weighted, _, _, _ = aggregate_per_assay(r_vals, assay_size=sizes, weighted=True)
         assert pytest.approx(r_macro, abs=1e-5) == 0.0
         assert pytest.approx(r_weighted, abs=1e-5) == -0.5
 

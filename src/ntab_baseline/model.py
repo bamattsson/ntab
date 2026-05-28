@@ -178,7 +178,7 @@ class AffinityModel(L.LightningModule):
             self._val_assay_ids,
             self.min_assay_size,
         )
-        r, _, _ = aggregate_per_assay(r_vals)
+        r, _, _, _ = aggregate_per_assay(r_vals)
         if not math.isnan(r):
             self.log("val_pearson_r", r, prog_bar=True)
         self._val_preds.clear()
@@ -201,7 +201,7 @@ class AffinityModel(L.LightningModule):
             self._test_assay_ids,
             self.min_assay_size,
         )
-        r, _, _ = aggregate_per_assay(r_vals)
+        r, _, _, _ = aggregate_per_assay(r_vals)
         if not math.isnan(r):
             self.log("test_pearson_r", r)
         self._test_preds.clear()

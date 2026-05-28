@@ -102,29 +102,29 @@ def aggregate_per_assay(
     n_bootstrap: int | None = None,
     seed_bootstrap: int | None = None,
     weighted: bool = False,
-) -> tuple[float, float | None, float | None]:
-    """Aggregate per-assay metric values to a mean with optional bootstrap CI.
+) -> tuple[float, float | None, float | None, float | None]:
+    """Aggregate per-assay metric values to a mean with optional bootstrap CI and SE.
 
     Args:
         metric: Per-assay metric values (already filtered by min_assay_size),
             shape (n_assays,).
         assay_size: Sample count per assay, shape (n_assays,). Required when
             weighted=True.
-        n_bootstrap: If set, compute a 95% CI using this many bootstrap resamples
-            (resampling at the assay level).
+        n_bootstrap: If set, compute a 95% CI and SE using this many bootstrap
+            resamples (resampling at the assay level).
         seed_bootstrap: Random seed for reproducible bootstrap.
         weighted: If True, weight each assay by its sample count. Requires
             assay_size to be provided.
 
     Returns:
-        Tuple of (mean, ci_low, ci_high). mean is NaN if metric is empty.
-        ci_low/ci_high are None when n_bootstrap is not provided.
+        Tuple of (mean, ci_low, ci_high, se). mean is NaN if metric is empty.
+        ci_low, ci_high, and se are None when n_bootstrap is not provided.
     """
     if weighted and assay_size is None:
         raise ValueError("assay_size is required when weighted=True")
 
     if len(metric) == 0:
-        return float("nan"), None, None
+        return float("nan"), None, None, None
 
     if weighted:
         w = assay_size.astype(np.float64)
@@ -133,7 +133,7 @@ def aggregate_per_assay(
         mean = float(metric.mean())
 
     if n_bootstrap is None:
-        return mean, None, None
+        return mean, None, None, None
 
     rng = np.random.default_rng(seed=seed_bootstrap)
     n = len(metric)
@@ -147,4 +147,5 @@ def aggregate_per_assay(
         boot_means = boot_vals.mean(axis=1)
 
     ci_low, ci_high = np.percentile(boot_means, [2.5, 97.5])
-    return mean, float(ci_low), float(ci_high)
+    se = float(boot_means.std(ddof=1))
+    return mean, float(ci_low), float(ci_high), se

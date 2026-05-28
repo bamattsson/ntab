@@ -661,26 +661,28 @@ class TestPrintMetrics:
         out = capsys.readouterr().out
         assert "overall" not in out
 
-    def test_bootstrap_se_printed_when_n_bootstrap_given(self, capsys) -> None:
+    def test_bootstrap_se_and_ci_printed_when_n_bootstrap_given(self, capsys) -> None:
         from ntab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df(), n_bootstrap=50)
         out = capsys.readouterr().out
-        assert "[" in out
+        assert "SE=" in out
+        assert "95% CI=" in out
 
-    def test_no_se_printed_when_n_bootstrap_is_none(self, capsys) -> None:
+    def test_no_bootstrap_info_when_n_bootstrap_is_none(self, capsys) -> None:
         from ntab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df(), n_bootstrap=None)
         out = capsys.readouterr().out
-        assert "[" not in out
+        assert "SE=" not in out
+        assert "95% CI=" not in out
 
     def test_n_assays_printed(self, capsys) -> None:
         from ntab_baseline.predict_on_benchmark import _print_metrics
 
         _print_metrics(self._make_df())
         out = capsys.readouterr().out
-        assert "n_assays =" in out
+        assert "n_assays=" in out
 
     def test_macro_and_weighted_differ_for_unequal_assays(self, capsys) -> None:
         # Build a df with two assays of very different sizes so the two averaging
@@ -710,7 +712,7 @@ class TestPrintMetrics:
         import re
 
         def extract_r(s: str) -> float:
-            m = re.search(r"Pearson r = ([+-]?\d+\.\d+)", s)
+            m = re.search(r"Pearson r=([+-]?\d+\.\d+)", s)
             assert m, f"Could not find Pearson r in: {s}"
             return float(m.group(1))
 

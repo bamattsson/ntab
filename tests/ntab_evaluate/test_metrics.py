@@ -125,17 +125,19 @@ def test_mae_min_assay_size_filters():
 
 def test_aggregate_basic_mean():
     metric = np.array([0.2, 0.4, 0.6])
-    mean, ci_low, ci_high = aggregate_per_assay(metric)
+    mean, ci_low, ci_high, se = aggregate_per_assay(metric)
     assert pytest.approx(mean) == 0.4
     assert ci_low is None
     assert ci_high is None
+    assert se is None
 
 
 def test_aggregate_empty_returns_nan():
-    mean, ci_low, ci_high = aggregate_per_assay(np.array([]))
+    mean, ci_low, ci_high, se = aggregate_per_assay(np.array([]))
     assert math.isnan(mean)
     assert ci_low is None
     assert ci_high is None
+    assert se is None
 
 
 def test_aggregate_weighted_requires_sizes():
@@ -148,15 +150,17 @@ def test_aggregate_weighted_mean():
     # Assay A: r=0.0, n=10; Assay B: r=1.0, n=30 → weighted mean = 0.75
     metric = np.array([0.0, 1.0])
     sizes = np.array([10, 30])
-    mean, _, _ = aggregate_per_assay(metric, assay_size=sizes, weighted=True)
+    mean, _, _, _ = aggregate_per_assay(metric, assay_size=sizes, weighted=True)
     assert pytest.approx(mean) == 0.75
 
 
 def test_aggregate_bootstrap_ci_ordered():
     rng = np.random.default_rng(0)
     metric = rng.uniform(0, 1, size=20)
-    mean, ci_low, ci_high = aggregate_per_assay(
+    mean, ci_low, ci_high, se = aggregate_per_assay(
         metric, n_bootstrap=500, seed_bootstrap=42
     )
     assert ci_low is not None and ci_high is not None
     assert ci_low <= mean <= ci_high
+    assert se is not None
+    assert se > 0

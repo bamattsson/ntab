@@ -228,7 +228,7 @@ def _print_metrics(
             split_assay_ids,
             min_assay_size=min_assay_size,
         )
-        r, ci_low, ci_high = aggregate_per_assay(
+        r, ci_low, ci_high, se = aggregate_per_assay(
             r_vals,
             assay_size=sizes if weighted else None,
             n_bootstrap=n_bootstrap,
@@ -237,10 +237,14 @@ def _print_metrics(
         )
         n_rows = int(sizes.sum()) if len(sizes) > 0 else 0
         n_assays = len(sizes)
-        ci_str = f" [{ci_low:.4f}, {ci_high:.4f}]" if ci_low is not None else ""
+        boot_str = (
+            f"  (SE={se:.4f}, 95% CI=[{ci_low:.4f}, {ci_high:.4f}])"
+            if se is not None
+            else ""
+        )
         print(
-            f"  {split:25s}  Pearson r = {float(r):.4f}{ci_str}"
-            f"  (n_rows = {n_rows:,}, n_assays = {n_assays})"
+            f"  {split:25s}  Pearson r={float(r):.4f}{boot_str}"
+            f"  n_rows={n_rows:,}  n_assays={n_assays}"
         )
 
     if df["split"].nunique() > 1:
@@ -252,19 +256,21 @@ def _print_metrics(
         )
         n_rows_all = int(sizes_all.sum()) if len(sizes_all) > 0 else 0
         n_assays_all = len(sizes_all)
-        r_all, ci_low_all, ci_high_all = aggregate_per_assay(
+        r_all, ci_low_all, ci_high_all, se_all = aggregate_per_assay(
             r_vals_all,
             assay_size=sizes_all if weighted else None,
             n_bootstrap=n_bootstrap,
             seed_bootstrap=42,
             weighted=weighted,
         )
-        ci_str = (
-            f" [{ci_low_all:.4f}, {ci_high_all:.4f}]" if ci_low_all is not None else ""
+        boot_str = (
+            f"  (SE={se_all:.4f}, 95% CI=[{ci_low_all:.4f}, {ci_high_all:.4f}])"
+            if se_all is not None
+            else ""
         )
         print(
-            f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{ci_str}"
-            f"  (n_rows = {n_rows_all:,}, n_assays = {n_assays_all})"
+            f"  {'overall':25s}  Pearson r={float(r_all):.4f}{boot_str}"
+            f"  n_rows={n_rows_all:,}  n_assays={n_assays_all}"
         )
 
 
