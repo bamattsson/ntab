@@ -187,8 +187,6 @@ def main() -> None:
         names=fp_names,
         props=normed_props,
         feature_names=np.array(PROP_FEATURE_NAMES),
-        mean=train_mean,
-        std=train_std,
     )
     print(f"  Saved {prop_npz_path}")
 
@@ -309,6 +307,8 @@ def main() -> None:
         "n_standard_types": len(STANDARD_TYPE_INDEX),
         "fp_size": fp_size,
         "fp_type": fp_type,
+        "mol_props_train_mean": train_mean.tolist(),
+        "mol_props_train_std": train_std.tolist(),
     }
     with open(out_dir / "meta.json", "w") as f:
         json.dump(meta, f)

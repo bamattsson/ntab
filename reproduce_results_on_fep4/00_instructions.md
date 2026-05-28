@@ -18,7 +18,7 @@ source .venv/bin/activate
 This will run the full pipeline that pulls ChEMBL data and prepares the data files. First add your local ChEMBL (v36) credentials to `reproduce_results_on_fep4/01_dataset_generation.yaml`. Then run:
 
 ```bash
-python src/ntab/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_generation.yaml
+python src/ntab_preprocess/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_generation.yaml
 ```
 
 (Note that this will put everything in train split, we will override this split in the next step)
@@ -44,9 +44,22 @@ Replace `version_X` and `<best>` with your values and run:
 ```bash
 python -m ntab_baseline.predict_on_csv \
     --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
-    --data-dir out_FEP4_baseline/data_preprocessing \
     --input-csv ../paper-identifying_and_addressing_data_leakage/data/out/FEPp_benchmark.csv \
     --output-csv predictions.csv \
     --size-weighted \
-    --n-bootstraps 1000
+    --n-bootstraps 1000 \
+    --output-csv predictions_version_X_FEPp4.csv
+```
+
+To predict on the OpenFE benchmark, use:
+
+```bash
+python -m ntab_baseline.predict_on_csv \
+    --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
+    --input-csv ../paper-identifying_and_addressing_data_leakage/data/out/OpenFE_benchmark.csv \
+    --extra-oov-mapping-file reproduce_results_on_fep4/openfe_oov_mapping.json \
+    --size-weighted \
+    --n-bootstraps 1000 \
+    --min-assay-size 2 \
+    --output-csv predictions_version_X_OpenFE.csv
 ```

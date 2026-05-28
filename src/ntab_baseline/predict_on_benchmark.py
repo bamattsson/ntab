@@ -8,7 +8,6 @@ Usage
 -----
     python -m ntab_baseline.predict_on_benchmark \\
         --checkpoint out_baseline/lightning_logs/version_0/checkpoints/best.ckpt \\
-        --data-dir out_baseline/data_preprocessing \\
         --activities out/activities.parquet \\
         --targets out/targets.parquet \\
         --splits test discard_not_novel \\
@@ -25,6 +24,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
+from ntab_baseline.callbacks import resolve_data_dir
 from ntab_baseline.constants import MIN_ASSAY_SIZE
 from ntab_baseline.model import AffinityModel
 from ntab_evaluate.metrics import aggregate_per_assay, pearson_r_per_assay
@@ -196,13 +196,6 @@ def _assemble_output_df(
     return df_out[OUTPUT_COLUMNS]
 
 
-def _count_qualifying_assays(assay_ids: list[str], min_assay_size: int) -> int:
-    """Count assay groups with at least min_assay_size samples."""
-    counts: dict[str, int] = {}
-    for aid in assay_ids:
-        counts[aid] = counts.get(aid, 0) + 1
-    return sum(1 for n in counts.values() if n >= min_assay_size)
-
 
 def _print_metrics(
     df: pd.DataFrame,
@@ -242,8 +235,8 @@ def _print_metrics(
             seed_bootstrap=42,
             weighted=weighted,
         )
-        n_rows = int(mask.sum())
-        n_assays = _count_qualifying_assays(split_assay_ids, min_assay_size)
+        n_rows = int(sizes.sum()) if len(sizes) > 0 else 0
+        n_assays = len(sizes)
         ci_str = f" [{ci_low:.4f}, {ci_high:.4f}]" if ci_low is not None else ""
         print(
             f"  {split:25s}  Pearson r = {float(r):.4f}{ci_str}"
@@ -251,13 +244,14 @@ def _print_metrics(
         )
 
     if df["split"].nunique() > 1:
-        n_assays_all = _count_qualifying_assays(assay_ids, min_assay_size)
         _, r_vals_all, sizes_all = pearson_r_per_assay(
             preds,
             labels,
             assay_ids,
             min_assay_size=min_assay_size,
         )
+        n_rows_all = int(sizes_all.sum()) if len(sizes_all) > 0 else 0
+        n_assays_all = len(sizes_all)
         r_all, ci_low_all, ci_high_all = aggregate_per_assay(
             r_vals_all,
             assay_size=sizes_all if weighted else None,
@@ -270,13 +264,12 @@ def _print_metrics(
         )
         print(
             f"  {'overall':25s}  Pearson r = {float(r_all):.4f}{ci_str}"
-            f"  (n_rows = {len(df):,}, n_assays = {n_assays_all})"
+            f"  (n_rows = {n_rows_all:,}, n_assays = {n_assays_all})"
         )
 
 
 def evaluate_splits(
     checkpoint_path: Path,
-    data_dir: Path,
     activities_path: Path,
     targets_path: Path,
     splits: list[str],
@@ -293,8 +286,6 @@ def evaluate_splits(
 
     Args:
         checkpoint_path: Path to the Lightning checkpoint (.ckpt).
-        data_dir: Training preprocessing directory (target_index.json, meta.json,
-            mol_properties.npz, and optionally oov_target_mapping.json).
         activities_path: Path to activities.parquet.
         targets_path: Path to targets.parquet (used to join target_chembl_id to
             uniprot_id).
@@ -304,6 +295,8 @@ def evaluate_splits(
         n_bootstrap: If given, compute bootstrapped SE for each Pearson r metric.
         weighted: If False (default), macro-average Pearson r. If True, size-weighted.
     """
+    data_dir = resolve_data_dir(checkpoint_path)
+
     print(f"Loading activities from {activities_path}")
     df = load_activities_as_standard_df(activities_path, targets_path, splits)
 
@@ -360,9 +353,6 @@ def main() -> None:
         "--checkpoint", required=True, help="Path to Lightning checkpoint (.ckpt)"
     )
     parser.add_argument(
-        "--data-dir", required=True, help="Training preprocessing directory"
-    )
-    parser.add_argument(
         "--activities", required=True, help="Path to activities.parquet"
     )
     parser.add_argument("--targets", required=True, help="Path to targets.parquet")
@@ -392,7 +382,6 @@ def main() -> None:
 
     evaluate_splits(
         checkpoint_path=Path(args.checkpoint),
-        data_dir=Path(args.data_dir),
         activities_path=Path(args.activities),
         targets_path=Path(args.targets),
         splits=args.splits,

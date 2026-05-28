@@ -1,0 +1,7 @@
+{
+  "_comment": "Mappings derived via ntab_baseline.preprocess_utils.find_closest_training_targets for OpenFE benchmark targets absent from ChEMBL.",
+  "P00720": "P52298",
+  "P02762": "O02853",
+  "P56221": "P15374",
+  "Q5RZ09": "P89582"
+}

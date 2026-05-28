@@ -3,7 +3,6 @@
 import json
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import torch
 
@@ -18,33 +17,30 @@ from ntab_baseline.model import AffinityModel
 _SMILES = ["c1ccccc1", "CC(=O)O", "CCO", "c1ccncc1", "CCCC"]
 
 
-def _make_preproc_dir(tmp_path: Path, n_targets: int = 5) -> Path:
+def _make_version_dir(tmp_path: Path, n_targets: int = 5) -> tuple[Path, Path]:
+    """Create a version dir with artifacts and a checkpoint, return (version_dir, ckpt_path)."""
     from ntab_baseline.preprocess_utils import FEATURE_NAMES as PROP_FEATURE_NAMES
+    import lightning
 
-    d = tmp_path / "preproc"
-    d.mkdir(parents=True, exist_ok=True)
+    version_dir = tmp_path / "lightning_logs" / "version_0"
+    version_dir.mkdir(parents=True, exist_ok=True)
+
     target_index = {f"P{i:05d}": i for i in range(n_targets)}
-    (d / "target_index.json").write_text(json.dumps(target_index))
+    (version_dir / "target_index.json").write_text(json.dumps(target_index))
+    n_features = len(PROP_FEATURE_NAMES)
     meta = {
         "n_targets": n_targets,
         "n_standard_types": 3,
         "fp_size": FP_SIZE,
         "fp_type": "binary",
+        "mol_props_train_mean": [0.0] * n_features,
+        "mol_props_train_std": [1.0] * n_features,
     }
-    (d / "meta.json").write_text(json.dumps(meta))
-    n_features = len(PROP_FEATURE_NAMES)
-    np.savez(
-        d / "mol_properties.npz",
-        feature_names=np.array(PROP_FEATURE_NAMES),
-        mean=np.zeros(n_features, dtype=np.float32),
-        std=np.ones(n_features, dtype=np.float32),
-    )
-    return d
+    (version_dir / "meta.json").write_text(json.dumps(meta))
 
-
-def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
-    import lightning
-
+    ckpt_dir = version_dir / "checkpoints"
+    ckpt_dir.mkdir()
+    ckpt_path = ckpt_dir / "best.ckpt"
     model = AffinityModel(
         n_targets=n_targets, n_standard_types=3, hidden_dim=32, target_embed_dim=8
     )
@@ -59,8 +55,9 @@ def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
             "optimizer_states": [],
             "lr_schedulers": [],
         },
-        str(path),
+        str(ckpt_path),
     )
+    return version_dir, ckpt_path
 
 
 def _make_input_csv(
@@ -104,7 +101,6 @@ class TestLoadCsvAsStandardDf:
             "smiles",
             "uniprot_id",
             "standard_type",
-            "assay_id",
             "split",
         ]:
             assert col in df.columns, f"Missing column: {col}"
@@ -144,12 +140,12 @@ class TestLoadCsvAsStandardDf:
         df = load_csv_as_standard_df(csv, default_standard_type="IC50")
         assert list(df["standard_type"]) == ["Ki", "Kd"]
 
-    def test_assay_id_equals_uniprot_id(self, tmp_path: Path) -> None:
+    def test_no_assay_id_column(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import load_csv_as_standard_df
 
         csv = _make_input_csv(tmp_path, self._make_rows())
         df = load_csv_as_standard_df(csv)
-        assert (df["assay_id"] == df["uniprot_id"]).all()
+        assert "assay_id" not in df.columns
 
     def test_split_is_predict(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import load_csv_as_standard_df
@@ -221,9 +217,7 @@ OUTPUT_COLUMNS = [
 
 class TestPredictOnCsvIntegration:
     def _setup(self, tmp_path: Path, n_targets: int = 3):
-        data_dir = _make_preproc_dir(tmp_path, n_targets=n_targets)
-        ckpt_path = tmp_path / "model.ckpt"
-        _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
+        _, ckpt_path = _make_version_dir(tmp_path, n_targets=n_targets)
         rows = [
             {
                 "ligand_name": f"mol_{i}",
@@ -233,22 +227,22 @@ class TestPredictOnCsvIntegration:
             for i in range(5)
         ]
         csv_path = _make_input_csv(tmp_path, rows)
-        return data_dir, ckpt_path, csv_path
+        return ckpt_path, csv_path
 
     def test_creates_output_csv(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         assert out_csv.exists()
 
     def test_output_has_unified_columns(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         df = pd.read_csv(out_csv)
         for col in OUTPUT_COLUMNS:
             assert col in df.columns, f"Missing column: {col}"
@@ -256,9 +250,9 @@ class TestPredictOnCsvIntegration:
     def test_pred_pchembl_numeric_and_not_null(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         df = pd.read_csv(out_csv)
         assert pd.api.types.is_float_dtype(df["pred_pchembl"])
         assert df["pred_pchembl"].notna().all()
@@ -266,55 +260,55 @@ class TestPredictOnCsvIntegration:
     def test_split_column_is_predict(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         df = pd.read_csv(out_csv)
         assert (df["split"] == "predict").all()
 
     def test_pchembl_value_is_nan_when_no_labels(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         df = pd.read_csv(out_csv)
         assert df["pchembl_value"].isna().all()
 
     def test_assay_id_equals_uniprot_id(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         df = pd.read_csv(out_csv)
         assert (df["assay_id"] == df["uniprot_id"]).all()
 
     def test_no_metrics_printed_when_no_labels(self, tmp_path: Path, capsys) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         out = capsys.readouterr().out
         assert "Pearson" not in out
 
     def test_standard_type_default_applied(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv, standard_type="Ki")
+        predict_on_csv(ckpt, csv, out_csv, standard_type="Ki")
         df = pd.read_csv(out_csv)
         assert (df["standard_type"] == "Ki").all()
 
     def test_output_row_count_matches_input(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
-        data_dir, ckpt, csv = self._setup(tmp_path)
+        ckpt, csv = self._setup(tmp_path)
         n_input = len(pd.read_csv(csv))
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt, data_dir, csv, out_csv)
+        predict_on_csv(ckpt, csv, out_csv)
         df = pd.read_csv(out_csv)
         assert len(df) == n_input
 
@@ -324,9 +318,7 @@ class TestPredictOnCsvIntegration:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
         n_targets = 3
-        data_dir = _make_preproc_dir(tmp_path, n_targets=n_targets)
-        ckpt_path = tmp_path / "model.ckpt"
-        _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
+        _, ckpt_path = _make_version_dir(tmp_path, n_targets=n_targets)
         rows = [
             {
                 "ligand_name": f"mol_{i}",
@@ -338,9 +330,35 @@ class TestPredictOnCsvIntegration:
         ]
         csv = _make_input_csv(tmp_path, rows)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt_path, data_dir, csv, out_csv)
+        predict_on_csv(ckpt_path, csv, out_csv)
         out = capsys.readouterr().out
         assert "Pearson" in out
+
+    def test_extra_oov_mapping_file_resolves_unknown_target(
+        self, tmp_path: Path
+    ) -> None:
+        from ntab_baseline.predict_on_csv import predict_on_csv
+
+        n_targets = 3
+        _, ckpt_path = _make_version_dir(tmp_path, n_targets=n_targets)
+
+        # Map an unknown target to a known one via extra OOV file
+        oov_file = tmp_path / "oov.json"
+        oov_file.write_text(json.dumps({"Q99999": "P00000"}))
+
+        rows = [
+            {
+                "ligand_name": "mol_0",
+                "uniprot_id": "Q99999",  # not in target_index
+                "smiles": "c1ccccc1",
+            }
+        ]
+        csv = _make_input_csv(tmp_path, rows)
+        out_csv = tmp_path / "predictions.csv"
+        predict_on_csv(ckpt_path, csv, out_csv, extra_oov_mapping_file=oov_file)
+        df = pd.read_csv(out_csv)
+        assert len(df) == 1
+        assert df["pred_pchembl"].notna().all()
 
     def test_pchembl_value_preserved_in_output_when_in_input(
         self, tmp_path: Path
@@ -348,9 +366,7 @@ class TestPredictOnCsvIntegration:
         from ntab_baseline.predict_on_csv import predict_on_csv
 
         n_targets = 3
-        data_dir = _make_preproc_dir(tmp_path, n_targets=n_targets)
-        ckpt_path = tmp_path / "model.ckpt"
-        _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
+        _, ckpt_path = _make_version_dir(tmp_path, n_targets=n_targets)
         rows = [
             {
                 "ligand_name": f"mol_{i}",
@@ -362,6 +378,6 @@ class TestPredictOnCsvIntegration:
         ]
         csv = _make_input_csv(tmp_path, rows)
         out_csv = tmp_path / "predictions.csv"
-        predict_on_csv(ckpt_path, data_dir, csv, out_csv)
+        predict_on_csv(ckpt_path, csv, out_csv)
         df = pd.read_csv(out_csv)
         assert df["pchembl_value"].notna().all()

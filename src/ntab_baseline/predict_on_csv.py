@@ -7,17 +7,18 @@ Usage
 -----
     python -m ntab_baseline.predict_on_csv \\
         --checkpoint out_baseline/lightning_logs/version_0/checkpoints/best.ckpt \\
-        --data-dir out_baseline/data_preprocessing \\
         --input-csv compounds.csv \\
         --output-csv predictions.csv
 """
 
 import argparse
+import json
 from pathlib import Path
 
 import pandas as pd
 
-from ntab_baseline.constants import STANDARD_TYPE_INDEX
+from ntab_baseline.callbacks import resolve_data_dir
+from ntab_baseline.constants import MIN_ASSAY_SIZE, STANDARD_TYPE_INDEX
 from ntab_baseline.predict_on_benchmark import (
     _assemble_output_df,
     _print_metrics,
@@ -35,8 +36,8 @@ def load_csv_as_standard_df(
 
     Accepts columns: ligand_name, uniprot_id, smiles (or canonical_smiles),
     and optionally standard_type and pchembl_value. If standard_type is absent,
-    fills it from default_standard_type. Sets assay_id = uniprot_id and
-    split = "predict". pchembl_value is passed through if present.
+    fills it from default_standard_type. Sets split = "predict". pchembl_value
+    is passed through if present.
 
     Args:
         input_csv: Path to input CSV.
@@ -45,7 +46,7 @@ def load_csv_as_standard_df(
 
     Returns:
         Standard input DataFrame with columns: ligand_name, smiles, uniprot_id,
-        standard_type, assay_id, split, and optionally pchembl_value.
+        standard_type, split, and optionally pchembl_value.
     """
     df = pd.read_csv(input_csv)
 
@@ -64,7 +65,6 @@ def load_csv_as_standard_df(
             df["standard_type"].str.lower().map(_ST_NORM).fillna(df["standard_type"])
         )
 
-    df["assay_id"] = df["uniprot_id"]
     df["split"] = "predict"
 
     return df
@@ -72,7 +72,6 @@ def load_csv_as_standard_df(
 
 def predict_on_csv(
     checkpoint_path: Path,
-    data_dir: Path,
     input_csv: Path,
     output_csv: Path,
     standard_type: str = "IC50",
@@ -80,13 +79,13 @@ def predict_on_csv(
     n_bootstrap: int | None = None,
     device: str | None = None,
     weighted: bool = False,
+    min_assay_size: int = MIN_ASSAY_SIZE,
+    extra_oov_mapping_file: Path | None = None,
 ) -> None:
     """Run model inference on a user CSV and write predictions.
 
     Args:
         checkpoint_path: Path to the Lightning checkpoint (.ckpt).
-        data_dir: Training preprocessing directory (target_index.json, meta.json,
-            mol_properties.npz, and optionally oov_target_mapping.json).
         input_csv: Path to input CSV (columns: ligand_name, uniprot_id, smiles).
         output_csv: Destination path for the predictions CSV.
         standard_type: Assay type applied to all rows when the CSV does not
@@ -95,7 +94,17 @@ def predict_on_csv(
         n_bootstrap: If given and labels are present, compute bootstrapped SE.
         device: Torch device. Defaults to "cuda" if available, else "cpu".
         weighted: If False (default), macro-average Pearson r. If True, size-weighted.
+        min_assay_size: Minimum compounds per assay to include in metrics.
+        extra_oov_mapping_file: Optional path to a JSON file with extra OOV target
+            mappings, merged on top of the checkpoint's oov_target_mapping.json.
     """
+    data_dir = resolve_data_dir(checkpoint_path)
+
+    extra_oov_mapping: dict[str, str] | None = None
+    if extra_oov_mapping_file is not None:
+        with open(extra_oov_mapping_file) as f:
+            extra_oov_mapping = json.load(f)
+
     print(f"Loading input from {input_csv}")
     df = load_csv_as_standard_df(input_csv, default_standard_type=standard_type)
 
@@ -107,7 +116,7 @@ def predict_on_csv(
         target_indices,
         std_type_indices,
         df_filtered,
-    ) = preprocess_for_inference(df, data_dir)
+    ) = preprocess_for_inference(df, data_dir, extra_oov_mapping=extra_oov_mapping)
 
     n_dropped = len(df) - len(df_filtered)
     print(f"  {len(df_filtered):,} rows after SMILES filtering ({n_dropped} dropped)")
@@ -140,7 +149,7 @@ def predict_on_csv(
     print(f"Predictions saved to {output_csv} ({len(output_df):,} rows)")
 
     if output_df["pchembl_value"].notna().any():
-        _print_metrics(output_df, n_bootstrap=n_bootstrap, weighted=weighted)
+        _print_metrics(output_df, min_assay_size=min_assay_size, n_bootstrap=n_bootstrap, weighted=weighted)
 
 
 def main() -> None:
@@ -149,9 +158,6 @@ def main() -> None:
     )
     parser.add_argument(
         "--checkpoint", required=True, help="Path to Lightning checkpoint (.ckpt)"
-    )
-    parser.add_argument(
-        "--data-dir", required=True, help="Training preprocessing directory"
     )
     parser.add_argument(
         "--input-csv",
@@ -188,11 +194,23 @@ def main() -> None:
         default=False,
         help="Use size-weighted Pearson r instead of macro-average (default: macro)",
     )
+    parser.add_argument(
+        "--min-assay-size",
+        type=int,
+        default=MIN_ASSAY_SIZE,
+        help=f"Minimum compounds per assay for metrics (default: {MIN_ASSAY_SIZE})",
+    )
+    parser.add_argument(
+        "--extra-oov-mapping-file",
+        default=None,
+        help="Path to a JSON file mapping unknown UniProt IDs (not seen during training) to "
+             "the most similar training target. Format: {\"Q99999\": \"P00000\", ...}. "
+             "Merged on top of any mappings saved with the checkpoint.",
+    )
     args = parser.parse_args()
 
     predict_on_csv(
         checkpoint_path=Path(args.checkpoint),
-        data_dir=Path(args.data_dir),
         input_csv=Path(args.input_csv),
         output_csv=Path(args.output_csv),
         standard_type=args.standard_type,
@@ -200,6 +218,8 @@ def main() -> None:
         n_bootstrap=args.n_bootstraps,
         device=args.device,
         weighted=args.size_weighted,
+        min_assay_size=args.min_assay_size,
+        extra_oov_mapping_file=Path(args.extra_oov_mapping_file) if args.extra_oov_mapping_file else None,
     )
 
 

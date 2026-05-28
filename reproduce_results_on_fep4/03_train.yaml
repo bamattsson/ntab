@@ -18,6 +18,7 @@ trainer:
         mode: max
         save_top_k: 1
         filename: best-{epoch}-{val_pearson_r:.4f}
+    - class_path: ntab_baseline.callbacks.CopyTrainingArtifacts
 
 data:
   data_dir: out_FEP4_baseline/data_preprocessing

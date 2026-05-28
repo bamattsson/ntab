@@ -24,6 +24,7 @@ from ntab_baseline.preprocess_utils import (
 def preprocess_for_inference(
     df: pd.DataFrame,
     data_dir: Path,
+    extra_oov_mapping: dict[str, str] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, pd.DataFrame]:
     """Preprocess a standard input DataFrame for model inference.
 
@@ -41,6 +42,9 @@ def preprocess_for_inference(
             Any additional columns are preserved in df_filtered.
         data_dir: Training preprocessing directory containing target_index.json,
             meta.json, mol_properties.npz, and optionally oov_target_mapping.json.
+        extra_oov_mapping: Additional OOV mappings merged on top of
+            oov_target_mapping.json (if any). Existing entries in
+            oov_target_mapping.json take precedence.
 
     Returns:
         Tuple of:
@@ -65,10 +69,13 @@ def preprocess_for_inference(
     fp_type: str = meta["fp_type"]
 
     oov_mapping: dict[str, str] = {}
+    if extra_oov_mapping:
+        oov_mapping.update(extra_oov_mapping)
+
     oov_path = data_dir / "oov_target_mapping.json"
     if oov_path.exists():
         with open(oov_path) as f:
-            oov_mapping = json.load(f)
+            oov_mapping.update(json.load(f))
 
     unresolvable = sorted(
         uid
@@ -107,11 +114,12 @@ def preprocess_for_inference(
     fp_matrix_kept = fp_matrix_raw[keep_mask].astype(np.float32)
     raw_props_kept = raw_props[[prop_name_to_row[n] for n in fp_names_kept]]
 
-    train_props_npz = np.load(data_dir / "mol_properties.npz")
+    train_mean = np.array(meta["mol_props_train_mean"], dtype=np.float32)
+    train_std = np.array(meta["mol_props_train_std"], dtype=np.float32)
     normed_props = normalise_mol_properties(
         raw_props_kept,
-        mean=train_props_npz["mean"],
-        std=train_props_npz["std"],
+        mean=train_mean,
+        std=train_std,
     )
 
     feature_names = list(PROP_FEATURE_NAMES)

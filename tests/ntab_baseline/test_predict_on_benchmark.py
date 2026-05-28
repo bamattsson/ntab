@@ -41,21 +41,16 @@ def _make_preproc_dir(tmp_path: Path, n_targets: int = 5) -> Path:
     target_index = {f"P{i:05d}": i for i in range(n_targets)}
     (d / "target_index.json").write_text(json.dumps(target_index))
 
+    n_features = len(PROP_FEATURE_NAMES)
     meta = {
         "n_targets": n_targets,
         "n_standard_types": 3,
         "fp_size": FP_SIZE,
         "fp_type": "binary",
+        "mol_props_train_mean": [0.0] * n_features,
+        "mol_props_train_std": [1.0] * n_features,
     }
     (d / "meta.json").write_text(json.dumps(meta))
-
-    n_features = len(PROP_FEATURE_NAMES)
-    np.savez(
-        d / "mol_properties.npz",
-        feature_names=np.array(PROP_FEATURE_NAMES),
-        mean=np.zeros(n_features, dtype=np.float32),
-        std=np.ones(n_features, dtype=np.float32),
-    )
     return d
 
 
@@ -128,6 +123,7 @@ def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
     """Save a minimal Lightning-compatible checkpoint for AffinityModel."""
     import lightning
 
+    path.parent.mkdir(parents=True, exist_ok=True)
     model = AffinityModel(
         n_targets=n_targets,
         n_standard_types=3,
@@ -147,6 +143,34 @@ def _save_tiny_checkpoint(path: Path, n_targets: int = 5) -> None:
         },
         str(path),
     )
+
+
+def _write_artifacts(d: Path, n_targets: int = 5) -> None:
+    """Write training artifacts (target_index, meta) into directory d."""
+    from ntab_baseline.preprocess_utils import FEATURE_NAMES as PROP_FEATURE_NAMES
+
+    d.mkdir(parents=True, exist_ok=True)
+    target_index = {f"P{i:05d}": i for i in range(n_targets)}
+    (d / "target_index.json").write_text(json.dumps(target_index))
+    n_features = len(PROP_FEATURE_NAMES)
+    meta = {
+        "n_targets": n_targets,
+        "n_standard_types": 3,
+        "fp_size": FP_SIZE,
+        "fp_type": "binary",
+        "mol_props_train_mean": [0.0] * n_features,
+        "mol_props_train_std": [1.0] * n_features,
+    }
+    (d / "meta.json").write_text(json.dumps(meta))
+
+
+def _make_version_dir(tmp_path: Path, n_targets: int = 5) -> tuple[Path, Path]:
+    """Create a version dir with artifacts and checkpoint, return (version_dir, ckpt_path)."""
+    version_dir = tmp_path / "lightning_logs" / "version_0"
+    _write_artifacts(version_dir, n_targets=n_targets)
+    ckpt_path = version_dir / "checkpoints" / "best.ckpt"
+    _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
+    return version_dir, ckpt_path
 
 
 # ---------------------------------------------------------------------------
@@ -711,31 +735,29 @@ OUTPUT_COLUMNS = [
 
 class TestEvaluateSplits:
     def _setup(self, tmp_path: Path, n_targets: int = 3):
-        data_dir = _make_preproc_dir(tmp_path, n_targets=n_targets)
-        ckpt_path = tmp_path / "model.ckpt"
-        _save_tiny_checkpoint(ckpt_path, n_targets=n_targets)
+        _, ckpt_path = _make_version_dir(tmp_path, n_targets=n_targets)
         acts_path = tmp_path / "activities.parquet"
         _make_activities_parquet(
             acts_path, splits=["test", "discard_not_novel"], n_targets=n_targets
         )
         targets_path = tmp_path / "targets.parquet"
         _make_targets_parquet(targets_path, n_targets=n_targets)
-        return data_dir, ckpt_path, acts_path, targets_path
+        return ckpt_path, acts_path, targets_path
 
     def test_creates_output_csv(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         assert out_csv.exists()
 
     def test_output_csv_has_unified_columns(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         df = pd.read_csv(out_csv)
         for col in OUTPUT_COLUMNS:
             assert col in df.columns, f"Missing column: {col}"
@@ -743,9 +765,9 @@ class TestEvaluateSplits:
     def test_output_uses_assay_id_not_assay_chembl_id(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         df = pd.read_csv(out_csv)
         assert "assay_id" in df.columns
         assert "assay_chembl_id" not in df.columns
@@ -753,9 +775,9 @@ class TestEvaluateSplits:
     def test_output_uses_ligand_name_not_ligand_chembl_id(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         df = pd.read_csv(out_csv)
         assert "ligand_name" in df.columns
         assert "ligand_chembl_id" not in df.columns
@@ -763,23 +785,22 @@ class TestEvaluateSplits:
     def test_output_rows_match_requested_split(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         activities_df = pd.read_parquet(acts)
         expected_n = len(activities_df[activities_df["split"] == "test"])
 
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         result = pd.read_csv(out_csv)
         assert len(result) == expected_n
 
     def test_multiple_splits_in_output(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
         evaluate_splits(
             ckpt,
-            data_dir,
             acts,
             tgts,
             splits=["test", "discard_not_novel"],
@@ -791,9 +812,9 @@ class TestEvaluateSplits:
     def test_pred_pchembl_is_numeric_and_not_null(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         df = pd.read_csv(out_csv)
         assert pd.api.types.is_float_dtype(df["pred_pchembl"])
         assert df["pred_pchembl"].notna().all()
@@ -801,12 +822,11 @@ class TestEvaluateSplits:
     def test_raises_when_no_rows_for_any_split(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
         with pytest.raises(ValueError, match="No rows found"):
             evaluate_splits(
                 ckpt,
-                data_dir,
                 acts,
                 tgts,
                 splits=["nonexistent_split"],
@@ -816,29 +836,28 @@ class TestEvaluateSplits:
     def test_split_column_preserved_in_output(self, tmp_path: Path) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         df = pd.read_csv(out_csv)
         assert (df["split"] == "test").all()
 
     def test_prints_pearson_r(self, tmp_path: Path, capsys) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
-        evaluate_splits(ckpt, data_dir, acts, tgts, splits=["test"], output_csv=out_csv)
+        evaluate_splits(ckpt, acts, tgts, splits=["test"], output_csv=out_csv)
         out = capsys.readouterr().out
         assert "Pearson" in out
 
     def test_n_bootstrap_prints_se(self, tmp_path: Path, capsys) -> None:
         from ntab_baseline.predict_on_benchmark import evaluate_splits
 
-        data_dir, ckpt, acts, tgts = self._setup(tmp_path)
+        ckpt, acts, tgts = self._setup(tmp_path)
         out_csv = tmp_path / "predictions.csv"
         evaluate_splits(
             ckpt,
-            data_dir,
             acts,
             tgts,
             splits=["test"],
