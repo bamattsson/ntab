@@ -5,7 +5,7 @@
 seed_everything: 42
 
 trainer:
-  max_epochs: 25
+  max_epochs: 100
   accelerator: auto
   devices: 1
   log_every_n_steps: 50
@@ -22,7 +22,11 @@ trainer:
 data:
   data_dir: out_baseline/data_preprocessing
   num_workers: 4
+  use_chemprop: true
 
 model:
-  use_fps: true
-  use_mol_props: true
+  use_fps: false
+  use_mol_props: false
+  use_chemprop: true
+  chemprop_d_h: 2048
+  chemprop_depth: 4
