@@ -2,9 +2,11 @@
 
 These steps reproduce the evaluation of the baseline model on the FEP+ 4 benchmark dataset. They assume that that you:
 - have a local version of the ChEMBL database (v36) as a postres DB
-- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from [here](https://github.com/bamattsson/paper-identifying_and_addressing_data_leakage/tree/421fc9a620c98e6e49517fcd2c253a3265ea4821/data/out) and that they exist in `../paper-identifying_and_addressing_data_leakage/data/out/` relative to this repo.
+- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from [here](https://github.com/bamattsson/paper-identifying_and_addressing_data_leakage/tree/627da788480c85266f83df5a8503465232325d95/data/out) and that they exist in `../paper-identifying_and_addressing_data_leakage/data/out/` relative to this repo.
 
-If you want to rerun the predictions you can download the models from [this GDrive](https://drive.google.com/drive/folders/1HWiKaobRYdpQfH2dPTnXr1VFcCEIihWZ?usp=sharing) and only do steps 0 and 4. If you want to retrain the models follow all the steps below. We trained the models on commit `52f3381` with a nvidia GPU, this gives the result 0.663 for the FP + mol prop. As there's only 4 targets, and the SE are large (0.05-0.15) the results can vary several 0.01 depending on random seeds.
+If you want to rerun the predictions you can download the models from [this GDrive](https://drive.google.com/drive/folders/1HWiKaobRYdpQfH2dPTnXr1VFcCEIihWZ?usp=sharing) and only do steps 0 and 4.
+
+If you want to retrain the models follow all the steps below. For FP + mol prop, FP only and mol prop only we trained the models on commit `52f3381`. The chemprop model on commit `ffb3e4e`.
 
 **Step 0 – Install packages:**
 
