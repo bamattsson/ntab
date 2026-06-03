@@ -5,7 +5,7 @@
 - Use the **train** and **val** splits in whatever way you like — mix them, re-split, filter.
 - Filtering training rows is fine and may even help (e.g. removing inequality-relation measurements like `<` and `>`).
 - **Do not train on compounds outside the provided train and val splits.** The similarity bins measure novelty relative to the compounds in the training split specifically — not all of ChEMBL and not external datasets. Adding extra compounds (from external sources or other ChEMBL assay types) means your model may have seen structurally similar compounds that were absent from the reference set, invalidating the novelty comparison. If you need extra training data, you can regenerate the benchmark with those compounds included in the reference set — see [preprocess.md](preprocess.md) — but your results will not be directly comparable to others.
-- Do not use pre-trained ML models that were trained on post-2022 data, nor that were trained on data which may invalidate the novelty split above. If you do, state so explicictly.
+- Do not use pre-trained ML models, as they may have been trained on different training data than what is allowed here.
 
 ## Test set
 

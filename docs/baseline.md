@@ -77,7 +77,6 @@ write per-row predictions to a CSV:
 ```bash
 python -m ntab_baseline.predict_on_benchmark \
     --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
-    --data-dir out_baseline/data_preprocessing \
     --activities out/activities.parquet \
     --targets out/targets.parquet \
     --splits test_sim_0.00_0.35 test_sim_0.35_0.50 test_sim_0.50_0.70 test_sim_0.70_1.00 test_sim_1.00 \
@@ -96,7 +95,6 @@ optionally `standard_type` and `pchembl_value`):
 ```bash
 python -m ntab_baseline.predict_on_csv \
     --checkpoint out_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
-    --data-dir out_baseline/data_preprocessing \
     --input-csv compounds.csv \
     --output-csv predictions.csv
 ```

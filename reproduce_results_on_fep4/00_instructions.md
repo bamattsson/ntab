@@ -47,7 +47,6 @@ Replace `version_X` and `<best>` with your values and run:
 python -m ntab_baseline.predict_on_csv \
     --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
     --input-csv ../paper-identifying_and_addressing_data_leakage/data/out/FEPp_benchmark.csv \
-    --output-csv predictions.csv \
     --size-weighted \
     --n-bootstraps 1000 \
     --output-csv predictions_version_X_FEPp4.csv
