@@ -1,13 +1,13 @@
 # Preprocessing config for the affinity baseline — FEP benchmark data split.
-# Run: uv run python -m nfab_baseline.preprocess_training_data --config reproduce_results_on_fep4/02_model_data.yaml
+# Run: uv run python -m ntab_baseline.preprocess_training_data --config reproduce_results_on_fep4/02_model_data.yaml
 
 paths:
-  activities_parquet: ../timesplit-affinity-benchmark/out_FEP4/activities.parquet
-  targets_parquet: ../timesplit-affinity-benchmark/out_FEP4/targets.parquet
+  activities_parquet: out_FEP4/activities.parquet
+  targets_parquet: out_FEP4/targets.parquet
   output_dir: out_FEP4_baseline/data_preprocessing
 fp_type: count
 # This should contain the FEP+ 4 data split as uniprot_id -> train/val/test
-split_from_file: ../paper-critical_assessment_of_binding_affinity_benchmarks/data/out/FEP_data_split.csv
+split_from_file: ../paper-identifying_and_addressing_data_leakage/data/out/FEP_data_split.csv
 val_splits:
   - val  # Needs to be val for this dataset
 n_jobs: 8

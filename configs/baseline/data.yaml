@@ -1,5 +1,5 @@
 # Preprocessing config for the affinity baseline.
-# Run: python -m nfab_baseline.preprocess_training_data --config configs/baseline/data.yaml
+# Run: python -m ntab_baseline.preprocess_training_data --config configs/baseline/data.yaml
 
 paths:
   activities_parquet: out/activities.parquet

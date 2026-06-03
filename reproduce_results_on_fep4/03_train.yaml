@@ -1,28 +1,33 @@
 # Training config.
 # Run with:
-#   uv run python -m nfab_baseline.train fit --config reproduce_results_on_fep4/03_train.yaml
+#   uv run python -m ntab_baseline.train fit --config reproduce_results_on_fep4/03_train.yaml
 
 seed_everything: 42
 
 trainer:
-  max_epochs: 25
+  max_epochs: 100
   accelerator: auto
   devices: 1
   log_every_n_steps: 50
   default_root_dir: out_FEP4_baseline
   callbacks:
-    - class_path: nfab_baseline.model_utils.MetricsPlotCallback
+    - class_path: ntab_baseline.model_utils.MetricsPlotCallback
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
       init_args:
         monitor: val_pearson_r
         mode: max
         save_top_k: 1
         filename: best-{epoch}-{val_pearson_r:.4f}
+    - class_path: ntab_baseline.callbacks.CopyTrainingArtifacts
 
 data:
   data_dir: out_FEP4_baseline/data_preprocessing
   num_workers: 4
+  use_chemprop: true
 
 model:
-  use_fps: true
-  use_mol_props: true
+  use_fps: false
+  use_mol_props: false
+  use_chemprop: true
+  chemprop_d_h: 2048
+  chemprop_depth: 4

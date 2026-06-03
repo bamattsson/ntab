@@ -2,7 +2,11 @@
 
 These steps reproduce the evaluation of the baseline model on the FEP+ 4 benchmark dataset. They assume that that you:
 - have a local version of the ChEMBL database (v36) as a postres DB
-- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from [here](https://github.com/bamattsson/paper-critical_assessment_of_binding_affinity_benchmarks/tree/421fc9a620c98e6e49517fcd2c253a3265ea4821/data/out) and that they exist in `../paper-critical_assessment_of_binding_affinity_benchmarks/data/out/` relative to this repo.
+- have downloaded or reproduced the FEP+ 4 datasplit files and benchmark data files from [here](https://github.com/bamattsson/paper-identifying_and_addressing_data_leakage/tree/627da788480c85266f83df5a8503465232325d95/data/out) and that they exist in `../paper-identifying_and_addressing_data_leakage/data/out/` relative to this repo.
+
+If you want to rerun the predictions you can download the models from [this GDrive](https://drive.google.com/drive/folders/1HWiKaobRYdpQfH2dPTnXr1VFcCEIihWZ?usp=sharing) and only do steps 0 and 4.
+
+If you want to retrain the models follow all the steps below. For FP + mol prop, FP only and mol prop only we trained the models on commit `52f3381`. The chemprop model on commit `ffb3e4e`.
 
 **Step 0 – Install packages:**
 
@@ -16,7 +20,7 @@ source .venv/bin/activate
 This will run the full pipeline that pulls ChEMBL data and prepares the data files. First add your local ChEMBL (v36) credentials to `reproduce_results_on_fep4/01_dataset_generation.yaml`. Then run:
 
 ```bash
-python src/nfab/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_generation.yaml
+python src/ntab_preprocess/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_generation.yaml
 ```
 
 (Note that this will put everything in train split, we will override this split in the next step)
@@ -24,14 +28,14 @@ python src/nfab/run_pipeline.py --config reproduce_results_on_fep4/01_dataset_ge
 **Step 2 – Preprocess features and apply FEP+ split:**
 
 ```bash
-python -m nfab_baseline.preprocess_training_data \
+python -m ntab_baseline.preprocess_training_data \
     --config reproduce_results_on_fep4/02_model_data.yaml
 ```
 
 **Step 3 — Train:**
 
 ```bash
-python -m nfab_baseline.train fit \
+python -m ntab_baseline.train fit \
     --config reproduce_results_on_fep4/03_train.yaml
 ```
 
@@ -40,15 +44,23 @@ python -m nfab_baseline.train fit \
 Replace `version_X` and `<best>` with your values and run:
 
 ```bash
-python -m nfab_baseline.predict_on_csv \
+python -m ntab_baseline.predict_on_csv \
     --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
-    --data-dir out_FEP4_baseline/data_preprocessing \
-    --input-csv ../paper-critical_assessment_of_binding_affinity_benchmarks/data/out/FEPp_benchmark.csv \
-    --output-csv predictions.csv \
+    --input-csv ../paper-identifying_and_addressing_data_leakage/data/out/FEPp_benchmark.csv \
     --size-weighted \
-    --n-bootstraps 1000
+    --n-bootstraps 1000 \
+    --output-csv predictions_version_X_FEPp4.csv
 ```
 
----
+To predict on the OpenFE benchmark, use:
 
-On commit `52f3381` with a nvidia GPU we get the results 0.663, but the results can vary up or down a few 0.01 depending on random seeds.
+```bash
+python -m ntab_baseline.predict_on_csv \
+    --checkpoint out_FEP4_baseline/lightning_logs/version_X/checkpoints/<best>.ckpt \
+    --input-csv ../paper-identifying_and_addressing_data_leakage/data/out/OpenFE_benchmark.csv \
+    --extra-oov-mapping-file reproduce_results_on_fep4/openfe_oov_mapping.json \
+    --size-weighted \
+    --n-bootstraps 1000 \
+    --min-assay-size 2 \
+    --output-csv predictions_version_X_OpenFE.csv
+```

@@ -1,10 +1,8 @@
-# Novelty-filtered Affinity Benchmark
-
-![](docs/benchmark_methodology.png)
+# Novelty-Tiered Affinity Benchmark (NTAB)
 
 **Paper**: [coming soon]() | **Dataset**: [coming soon]()
 
-A novelty-filtered, time-split benchmark for protein-ligand binding affinity prediction, built from ChEMBL binding data.
+A novelty-tiered, time-split benchmark for protein-ligand binding affinity prediction, built from ChEMBL binding data.
 
 ## Overview
 
@@ -23,7 +21,7 @@ Download `activities.parquet` and `targets.parquet` from [coming soon](). The do
 
 ### 2. Train your model
 
-Use all rows where `split = train`.
+Use all rows where `split = train` for train, and where `split = val_*` for validation. See [docs/benchmark_guidelines.md](docs/benchmark_guidelines.md) for more details on how we suggest people use this benchmark.
 
 ### 3. Generate predictions
 
@@ -38,13 +36,10 @@ Generate a prediction for every row where `split` starts with `test_`. Save thes
 
 Rows not present in the CSV are filled with `pred_pchembl = 6.0` (1 µM) when computing metrics.
 
-### 4. Analyse results
 
-Open `calculate_benchmark_performance.ipynb`, set `ACTIVITIES_PATH` and `MODELS`, and run all cells. The notebook computes mean Pearson r per similarity bin with bootstrap confidence intervals and produces a summary plot.
+### 4. Install dependencies for analysis
 
-## Installation
-
-### uv (recommended)
+#### uv (recommended)
 
 [uv](https://github.com/astral-sh/uv) is recommended. Requires Python 3.10+.
 
@@ -53,13 +48,17 @@ uv sync
 source .venv/bin/activate
 ```
 
-### conda
+#### conda
 
 ```bash
-conda create -n nfab python=3.11
-conda activate nfab
+conda create -n ntab python=3.11
+conda activate ntab
 pip install -e .
 ```
+
+### 5. Analyse results
+
+Open `calculate_benchmark_performance.ipynb`, set `ACTIVITIES_PATH` and `MODELS`, and run all cells. The notebook computes mean Pearson r per similarity bin with bootstrap confidence intervals and produces a summary plot.
 
 ## Dataset
 
@@ -137,11 +136,11 @@ A ligand-only MLP baseline is included as a probe for what performance is achiev
 
 ## Citation
 
-If you use NFAB in your research, please cite:
+If you use NTAB in your research, please cite:
 
 ```bibtex
-@article{mattsson2026critical,
-  title   = {Critical Assessment of Binding Affinity Benchmarks: Data Leakage and the Illusion of Generalization},
+@article{mattsson2026identifying,
+  title   = {Identifying and Addressing Systematic Data Leakage in Protein-Ligand Affinity Benchmarks},
   author  = {Mattsson, Bj{\"o}rn and Walters, W. Patrick},
   year = {2026},
   doi = {},

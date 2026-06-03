@@ -1,0 +1,353 @@
+import numpy as np
+import pytest
+import torch
+
+from ntab_baseline.constants import FP_SIZE, N_MOL_PROP_FEATURES
+from ntab_baseline.model import AffinityModel
+from ntab_evaluate.metrics import aggregate_per_assay, pearson_r_per_assay
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _make_model(
+    n_targets: int = 10,
+    n_standard_types: int = 3,
+    hidden_dim: int = 64,
+    embed_dim: int = 16,
+) -> AffinityModel:
+    return AffinityModel(
+        n_targets=n_targets,
+        n_standard_types=n_standard_types,
+        hidden_dim=hidden_dim,
+        target_embed_dim=embed_dim,
+        min_assay_size=3,  # small for tests
+        lr=1e-3,
+    )
+
+
+def _make_batch(
+    batch_size: int = 8,
+    n_targets: int = 10,
+    n_standard_types: int = 3,
+    bmg: object | None = None,
+) -> tuple:
+    rng = torch.Generator().manual_seed(0)
+    fps = torch.rand(batch_size, FP_SIZE, generator=rng)
+    props = torch.randn(batch_size, N_MOL_PROP_FEATURES)
+    target_idx = torch.randint(0, n_targets, (batch_size,))
+    standard_type_idx = torch.randint(0, n_standard_types, (batch_size,))
+    labels = torch.rand(batch_size) * 5 + 4
+    assay_ids = [f"ASSAY_{i % 3}" for i in range(batch_size)]
+    return fps, props, target_idx, standard_type_idx, labels, assay_ids, bmg
+
+
+# ---------------------------------------------------------------------------
+# pearson_r_per_assay
+# ---------------------------------------------------------------------------
+
+
+class TestPearsonRPerAssay:
+    def test_perfect_correlation_returns_one(self) -> None:
+        vals = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
+        assay_ids = ["A"] * 5
+        ids, r_vals, _ = pearson_r_per_assay(
+            preds=vals, labels=vals, assay_ids=assay_ids, min_assay_size=3
+        )
+        assert pytest.approx(r_vals[0], abs=1e-5) == 1.0
+
+    def test_perfect_anticorrelation_returns_minus_one(self) -> None:
+        preds = np.array([8.0, 7.0, 6.0, 5.0, 4.0])
+        labels = np.array([4.0, 5.0, 6.0, 7.0, 8.0])
+        assay_ids = ["A"] * 5
+        ids, r_vals, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
+        assert pytest.approx(r_vals[0], abs=1e-5) == -1.0
+
+    def test_averages_across_assays(self) -> None:
+        # Assay A: r=1, Assay B: r=-1 → macro mean = 0
+        preds = np.array([1.0, 2.0, 3.0, 3.0, 2.0, 1.0])
+        labels = np.array([1.0, 2.0, 3.0, 1.0, 2.0, 3.0])
+        assay_ids = ["A", "A", "A", "B", "B", "B"]
+        _, r_vals, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
+        mean, _, _, _ = aggregate_per_assay(r_vals)
+        assert pytest.approx(mean, abs=1e-5) == 0.0
+
+    def test_assays_below_min_size_are_skipped(self) -> None:
+        # Assay A: 5 samples (qualifies), Assay B: 2 samples (excluded)
+        preds = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 9.0, 1.0])
+        labels = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 1.0, 9.0])
+        assay_ids = ["A", "A", "A", "A", "A", "B", "B"]
+        ids, r_vals, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
+        assert list(ids) == ["A"]
+        assert pytest.approx(r_vals[0], abs=1e-5) == 1.0
+
+    def test_all_assays_below_min_size_returns_empty(self) -> None:
+        preds = np.array([1.0, 2.0])
+        labels = np.array([1.0, 2.0])
+        assay_ids = ["A", "A"]
+        ids, r_vals, sizes = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids, min_assay_size=3
+        )
+        assert len(ids) == 0
+
+    def test_default_min_assay_size_is_10(self) -> None:
+        # 9 samples → filtered out → empty result
+        preds = np.arange(9, dtype=np.float32)
+        labels = np.arange(9, dtype=np.float32)
+        assay_ids = ["A"] * 9
+        ids, r_vals, _ = pearson_r_per_assay(
+            preds=preds, labels=labels, assay_ids=assay_ids
+        )
+        assert len(ids) == 0
+
+    def test_size_weighted_differs_from_macro_for_unequal_assays(self) -> None:
+        # Assay A (3 samples, r≈1), Assay B (9 samples, r≈-1)
+        # Macro: (1 + -1) / 2 = 0; size-weighted: (3·1 + 9·-1) / 12 = -0.5
+        preds_a = np.array([1.0, 2.0, 3.0])
+        labels_a = np.array([1.0, 2.0, 3.0])
+        preds_b = np.array([9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0])
+        labels_b = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0])
+        preds = np.concatenate([preds_a, preds_b])
+        labels = np.concatenate([labels_a, labels_b])
+        assay_ids = ["A"] * 3 + ["B"] * 9
+        _, r_vals, sizes = pearson_r_per_assay(
+            preds, labels, assay_ids, min_assay_size=3
+        )
+        r_macro, _, _, _ = aggregate_per_assay(r_vals)
+        r_weighted, _, _, _ = aggregate_per_assay(r_vals, assay_size=sizes, weighted=True)
+        assert pytest.approx(r_macro, abs=1e-5) == 0.0
+        assert pytest.approx(r_weighted, abs=1e-5) == -0.5
+
+
+# ---------------------------------------------------------------------------
+# AffinityModel — forward pass
+# ---------------------------------------------------------------------------
+
+
+class TestAffinityModelForward:
+    def test_output_shape_is_batch_by_1(self) -> None:
+        model = _make_model()
+        fps, props, target_idx, standard_type_idx, _, _, _ = _make_batch(batch_size=8)
+        out = model(fps, props, target_idx, standard_type_idx)
+        assert out.shape == (8, 1)
+
+    def test_output_shape_batch_size_1(self) -> None:
+        model = _make_model().eval()
+        fps, props, target_idx, standard_type_idx, _, _, _ = _make_batch(batch_size=1)
+        out = model(fps, props, target_idx, standard_type_idx)
+        assert out.shape == (1, 1)
+
+    def test_output_is_float32(self) -> None:
+        model = _make_model()
+        fps, props, target_idx, standard_type_idx, _, _, _ = _make_batch()
+        out = model(fps, props, target_idx, standard_type_idx)
+        assert out.dtype == torch.float32
+
+    def test_different_targets_produce_different_outputs(self) -> None:
+        # Same fingerprint, props and standard type, different target → different prediction
+        model = _make_model(n_targets=5).eval()
+        fp = torch.rand(1, 2048)
+        props = torch.randn(1, N_MOL_PROP_FEATURES)
+        std_type = torch.tensor([0])
+        out_0 = model(fp, props, torch.tensor([0]), std_type)
+        out_1 = model(fp, props, torch.tensor([1]), std_type)
+        assert not torch.allclose(out_0, out_1)
+
+    def test_different_standard_types_produce_different_outputs(self) -> None:
+        # Same fingerprint, props and target, different standard type → different prediction
+        model = _make_model(n_targets=5, n_standard_types=3).eval()
+        fp = torch.rand(1, 2048)
+        props = torch.randn(1, N_MOL_PROP_FEATURES)
+        target = torch.tensor([0])
+        out_0 = model(fp, props, target, torch.tensor([0]))
+        out_1 = model(fp, props, target, torch.tensor([1]))
+        assert not torch.allclose(out_0, out_1)
+
+
+# ---------------------------------------------------------------------------
+# AffinityModel — training_step and validation_step
+# ---------------------------------------------------------------------------
+
+
+class TestAffinityModelSteps:
+    def test_training_step_returns_scalar_loss(self) -> None:
+        model = _make_model()
+        batch = _make_batch()
+        loss = model.training_step(batch, batch_idx=0)
+        assert isinstance(loss, torch.Tensor)
+        assert loss.shape == ()
+        assert loss.item() > 0
+
+    def test_loss_decreases_on_repeated_steps(self) -> None:
+        # Overfit sanity check: loss should decrease after several gradient steps
+        # on a fixed tiny batch
+        model = _make_model(n_targets=2, hidden_dim=32, embed_dim=8)
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
+
+        fps = torch.zeros(4, 2048)
+        props = torch.zeros(4, N_MOL_PROP_FEATURES)
+        target_idx = torch.tensor([0, 0, 1, 1])
+        standard_type_idx = torch.tensor([0, 0, 0, 0])
+        labels = torch.tensor([5.0, 5.0, 8.0, 8.0])
+        assay_ids = ["A", "A", "A", "A"]
+        batch = (fps, props, target_idx, standard_type_idx, labels, assay_ids, None)
+
+        losses = []
+        for _ in range(30):
+            optimizer.zero_grad()
+            loss = model.training_step(batch, batch_idx=0)
+            loss.backward()
+            optimizer.step()
+            losses.append(loss.item())
+
+        assert losses[-1] < losses[0], "Loss did not decrease"
+
+    def test_validation_step_runs_without_error(self) -> None:
+        model = _make_model(n_targets=10)
+        fps = torch.rand(6, 2048)
+        props = torch.randn(6, N_MOL_PROP_FEATURES)
+        target_idx = torch.zeros(6, dtype=torch.long)
+        standard_type_idx = torch.zeros(6, dtype=torch.long)
+        labels = torch.rand(6)
+        assay_ids = ["A"] * 6
+        batch = (fps, props, target_idx, standard_type_idx, labels, assay_ids, None)
+        model.validation_step(batch, batch_idx=0)  # should not raise
+
+    def test_validation_step_accumulates_state(self) -> None:
+        model = _make_model()
+        batch = _make_batch(batch_size=6)
+        model.validation_step(batch, batch_idx=0)
+        assert len(model._val_preds) == 1  # one batch tensor appended
+        assert len(model._val_assay_ids) == 6  # 6 assay id strings
+
+    def test_accumulated_state_cleared_after_validation_epoch_end(self) -> None:
+        model = _make_model()
+        model.validation_step(_make_batch(batch_size=6), batch_idx=0)
+        model.on_validation_epoch_end()
+        assert model._val_preds == []
+        assert model._val_labels == []
+        assert model._val_assay_ids == []
+
+    def test_pearson_r_uses_full_epoch_not_per_batch(self) -> None:
+        # Assay "A" has 2 samples in each of 2 batches (4 total).
+        # min_assay_size=3, so per-batch each would be skipped (only 2 each).
+        # Accumulated across the epoch all 4 qualify → a real r is computed.
+        model = _make_model(n_targets=1)
+        fp = torch.zeros(2, 2048)
+        props = torch.zeros(2, N_MOL_PROP_FEATURES)
+        t = torch.zeros(2, dtype=torch.long)
+        s = torch.zeros(2, dtype=torch.long)
+        batch1 = (fp, props, t, s, torch.tensor([1.0, 2.0]), ["A", "A"], None)
+        batch2 = (fp, props, t, s, torch.tensor([3.0, 4.0]), ["A", "A"], None)
+        model.validation_step(batch1, batch_idx=0)
+        model.validation_step(batch2, batch_idx=1)
+        # 4 samples accumulated across both batches
+        assert sum(p.numel() for p in model._val_preds) == 4
+
+    def test_test_step_accumulates_and_clears(self) -> None:
+        model = _make_model()
+        batch = _make_batch(batch_size=6)
+        model.test_step(batch, batch_idx=0)
+        assert len(model._test_preds) == 1
+        model.on_test_epoch_end()
+        assert model._test_preds == []
+
+
+# ---------------------------------------------------------------------------
+# AffinityModel — Chemprop integration
+# ---------------------------------------------------------------------------
+
+
+def _make_bmg(smiles_list: list[str]):
+    """Build a BatchMolGraph from a list of SMILES."""
+    from chemprop.data import BatchMolGraph
+    from ntab_baseline.chemprop_utils import smiles_to_molgraph
+
+    mol_graphs = [smiles_to_molgraph(s) for s in smiles_list]
+    return BatchMolGraph(mol_graphs)
+
+
+def _make_chemprop_model(
+    n_targets: int = 10,
+    hidden_dim: int = 64,
+    embed_dim: int = 16,
+    chemprop_d_h: int = 32,
+    use_fps: bool = False,
+    use_mol_props: bool = False,
+) -> AffinityModel:
+    return AffinityModel(
+        n_targets=n_targets,
+        hidden_dim=hidden_dim,
+        target_embed_dim=embed_dim,
+        min_assay_size=3,
+        use_fps=use_fps,
+        use_mol_props=use_mol_props,
+        use_chemprop=True,
+        chemprop_d_h=chemprop_d_h,
+        lr=1e-3,
+    )
+
+
+SMILES_4 = ["CCO", "c1ccccc1", "CC(=O)O", "CCN"]
+
+
+class TestAffinityModelChemprop:
+    def test_forward_chemprop_only(self) -> None:
+        model = _make_chemprop_model(use_fps=False, use_mol_props=False)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        fps = torch.zeros(batch_size, FP_SIZE)
+        props = torch.zeros(batch_size, N_MOL_PROP_FEATURES)
+        target_idx = torch.zeros(batch_size, dtype=torch.long)
+        std_type_idx = torch.zeros(batch_size, dtype=torch.long)
+        out = model(fps, props, target_idx, std_type_idx, bmg=bmg)
+        assert out.shape == (batch_size, 1)
+
+    def test_forward_chemprop_plus_fps(self) -> None:
+        model = _make_chemprop_model(use_fps=True, use_mol_props=False)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        fps = torch.rand(batch_size, FP_SIZE)
+        props = torch.zeros(batch_size, N_MOL_PROP_FEATURES)
+        target_idx = torch.zeros(batch_size, dtype=torch.long)
+        std_type_idx = torch.zeros(batch_size, dtype=torch.long)
+        out = model(fps, props, target_idx, std_type_idx, bmg=bmg)
+        assert out.shape == (batch_size, 1)
+
+    def test_forward_chemprop_plus_all(self) -> None:
+        model = _make_chemprop_model(use_fps=True, use_mol_props=True)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        fps = torch.rand(batch_size, FP_SIZE)
+        props = torch.randn(batch_size, N_MOL_PROP_FEATURES)
+        target_idx = torch.zeros(batch_size, dtype=torch.long)
+        std_type_idx = torch.zeros(batch_size, dtype=torch.long)
+        out = model(fps, props, target_idx, std_type_idx, bmg=bmg)
+        assert out.shape == (batch_size, 1)
+
+    def test_shared_step_with_chemprop(self) -> None:
+        model = _make_chemprop_model(use_fps=False, use_mol_props=False)
+        batch_size = 4
+        bmg = _make_bmg(SMILES_4)
+        batch = _make_batch(batch_size=batch_size, bmg=bmg)
+        loss, preds, labels, assay_ids, n = model._shared_step(batch)
+        assert loss.shape == ()
+        assert preds.shape == (batch_size,)
+
+    def test_chemprop_model_has_mp_and_agg(self) -> None:
+        model = _make_chemprop_model()
+        assert hasattr(model, "chemprop_mp")
+        assert hasattr(model, "chemprop_agg")
+
+    def test_no_chemprop_attrs_when_disabled(self) -> None:
+        model = _make_model()
+        assert not hasattr(model, "chemprop_mp")
+        assert not hasattr(model, "chemprop_agg")
