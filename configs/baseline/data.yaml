@@ -2,9 +2,9 @@
 # Run: python -m ntab_baseline.preprocess_training_data --config configs/baseline/data.yaml
 
 paths:
-  activities_parquet: out/activities.parquet
-  targets_parquet: out/targets.parquet
-  output_dir: out_baseline/data_preprocessing
+  activities_parquet: out_meanmax/activities.parquet
+  targets_parquet: out_meanmax/targets.parquet
+  output_dir: out_meanmax_baseline/data_preprocessing
 
 # Fingerprint type: "binary" (0/1 bits) or "count" (substructure occurrence counts).
 fp_type: count

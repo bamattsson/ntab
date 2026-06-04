@@ -5,7 +5,7 @@ chembl_requester:
   dbname:    # e.g. chembl_36
 
 # Root output directory. Final outputs go here
-out_dir: out
+out_dir: out_meanmax
 
 pipeline:
   test_set_similarity_bins:

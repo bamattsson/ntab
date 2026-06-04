@@ -9,7 +9,7 @@ trainer:
   accelerator: auto
   devices: 1
   log_every_n_steps: 50
-  default_root_dir: out_baseline
+  default_root_dir: out_meanmax_baseline
   callbacks:
     - class_path: ntab_baseline.model_utils.MetricsPlotCallback
     - class_path: lightning.pytorch.callbacks.ModelCheckpoint
@@ -21,7 +21,7 @@ trainer:
     - class_path: ntab_baseline.callbacks.CopyTrainingArtifacts
 
 data:
-  data_dir: out_baseline/data_preprocessing
+  data_dir: out_meanmax_baseline/data_preprocessing
   num_workers: 4
   use_chemprop: true
 
