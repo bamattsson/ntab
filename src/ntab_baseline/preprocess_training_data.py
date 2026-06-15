@@ -180,6 +180,7 @@ def main() -> None:
 
     np.savez_compressed(fp_npz_path, names=fp_names, fps=fp_matrix)
     print(f"  Saved {fp_npz_path}")
+    del fp_matrix
 
     prop_npz_path = out_dir / "mol_properties.npz"
     np.savez_compressed(
@@ -189,6 +190,7 @@ def main() -> None:
         feature_names=np.array(PROP_FEATURE_NAMES),
     )
     print(f"  Saved {prop_npz_path}")
+    del normed_props
 
     # ------------------------------------------------------------------
     # Precompute Chemprop MolGraphs for all compounds
@@ -211,6 +213,7 @@ def main() -> None:
     with open(mg_path, "wb") as f:
         pickle.dump(mol_graphs, f, protocol=pickle.HIGHEST_PROTOCOL)
     print(f"  Saved {mg_path} ({len(mol_graphs)} MolGraphs)")
+    del mol_graphs
 
     fp_name_to_idx: dict[str, int] = {name: i for i, name in enumerate(fp_names)}
 
