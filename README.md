@@ -1,6 +1,6 @@
 # Novelty-Tiered Affinity Benchmark (NTAB)
 
-**Paper**: [coming soon]() | **Dataset**: [coming soon]()
+[**Paper**](https://www.biorxiv.org/content/10.64898/2026.06.29.735309v1) | [**Dataset**](https://zenodo.org/records/19665374)
 
 A novelty-tiered, time-split benchmark for protein-ligand binding affinity prediction, built from ChEMBL binding data.
 
@@ -143,8 +143,7 @@ If you use NTAB in your research, please cite:
   title   = {Identifying and Addressing Systematic Data Leakage in Protein-Ligand Affinity Benchmarks},
   author  = {Mattsson, Bj{\"o}rn and Walters, W. Patrick},
   year = {2026},
-  doi = {},
-  journal = {},
+  journal = {BioRxiv},
 }
 ```
 
