@@ -17,7 +17,7 @@ Val and test assays are further filtered to retain only well-characterised (assa
 
 ### 1. Download the dataset
 
-Download `activities.parquet` and `targets.parquet` from [coming soon](). The download also includes predictions from the baseline models, which you can use as a reference when comparing your model's performance.
+Download `activities.parquet` and `targets.parquet` from [zenodo](https://zenodo.org/records/19665374). The download also includes predictions from the baseline models, which you can use as a reference when comparing your model's performance.
 
 ### 2. Train your model
 
